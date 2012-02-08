@@ -9,7 +9,7 @@ Uses fecundity objects to construct a matrix defining per-capita contribution to
 }
 \usage{
 createIPMFmatrix(fecObj, nEnvClass = 1, nBigMatrix = 50, minSize = -1, 
-	maxSize = 50, chosenCov = 1, integrateType="midpoint", correction="none", 
+	maxSize = 50, chosenCov = data.frame(covariate=1), integrateType="midpoint", correction="none", 
 	preCensus = TRUE, survObj = NULL, growObj = NULL)
 }
 %- maybe also 'usage' for other objects documented here.
@@ -31,8 +31,8 @@ createIPMFmatrix(fecObj, nEnvClass = 1, nBigMatrix = 50, minSize = -1,
     numeric, maximum size of the F matrix, defaults to 50.
   }
   \item{chosenCov}{
-    numeric indicating level of the discrete covariate, or vector
-    setting values where multiple covariates are modeled.
+    data-frame indicating level of the discrete covariate, or 
+    range of values where multiple covariates are modeled.
   }
   \item{integrateType}{
     integration type, defaults to "midpoint" (which uses probability density
@@ -86,7 +86,8 @@ C. Jessica E. Metcalf, Sean M. McMahon, Roberto Salguero-Gomez & Eelke Jongejans
 \examples{
 # Data with only continuous stage and one habitat
 dff <- generateData()
-fv1 <- makeFecObj(dff, explanatoryVariables = "size", Transform = "log")
+dff$fec[dff$fec==0] <- NA
+fv1 <- makeFecObj(dff, Formula = log(fec)~size, Transform = "log")
 Fmatrix <- createIPMFmatrix(fecObj = fv1, nBigMatrix = 20, 
 	minSize = min(dff$size, na.rm = TRUE), maxSize = max(dff$size, na.rm = TRUE), correction="constant")
 

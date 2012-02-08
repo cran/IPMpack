@@ -8,7 +8,7 @@ Creates a series of diagnostic graphs for a T matrix.
   Displays the effects of increasing number of bins and continuous (size) stage range on a number of predictions from the T matrix to verify that sufficient resolution and continuous stage range are being used. 
 }
 \usage{
-diagnosticsTmatrix(Tmatrix, growObj, survObj, dff, integrateType, correction)
+diagnosticsTmatrix(Tmatrix, growObj, survObj, dff, integrateType, correction,cov=data.frame(covariate=1))
 }
 %- maybe also 'usage' for other objects documented here.
 \arguments{
@@ -30,6 +30,9 @@ diagnosticsTmatrix(Tmatrix, growObj, survObj, dff, integrateType, correction)
   \item{correction}{
     correction type, defaults to "none"; option is "constant" which will multiply every column of the IPM by a constant sufficient to adjust values to those predicted for survival at that size. 
   }
+ \item{cov}{
+    a data-frame with one row containing all covariates; defaults to 1, and will be ignored if covariates do not exist in growth and survival objects
+}
 }
 \details{
   Top left panel: continuous (size) stage range in the data (histogram) and the size range used in the IPM (red dashed lines).
@@ -40,7 +43,7 @@ diagnosticsTmatrix(Tmatrix, growObj, survObj, dff, integrateType, correction)
   
   Top right panel: predicted life expectancy for the current (black) and extended IPM as above (red).
   
-  Bottom panels: numerical predicted density function (histogram) and the expected value from the normal density function (red line) for (x 0.5) small, (x 1) medium, and (x 1.5) large sizes.
+  Bottom panels: numerical predicted density function (histogram) and the expected value from the normal density function (red line) for (x 0.5) small, (x 1) medium, and (x 1.5) large sizes. Note that if growth is such that the pdf is mostly concentrated at values more than 3.5x the standard deviation of growth, then the plots may not show the pdf. 
   
   Not defined for compound T matrices, or matrices with discrete classes.
   
@@ -100,9 +103,9 @@ diagnosticsTmatrix(Tmatrix, growObj = gr1, survObj = makeSurvObj(dff), dff = dff
 
 #with log increment
 Tmatrix <- createIPMTmatrix(nBigMatrix = 50, minSize = min(dff$size, na.rm= TRUE), 
-	maxSize = max(dff$size, na.rm=TRUE), growObj = makeGrowthObj(dff,responseType = "logincr"), 
+	maxSize = max(dff$size, na.rm=TRUE), growObj = makeGrowthObj(dff,Formula = logincr~size), 
 		survObj = makeSurvObj(dff))
-diagnosticsTmatrix(Tmatrix, growObj = makeGrowthObj(dff,responseType = "logincr"), 
+diagnosticsTmatrix(Tmatrix, growObj = makeGrowthObj(dff,Formula = logincr~size), 
 	survObj = makeSurvObj(dff), dff = dff)
 
 

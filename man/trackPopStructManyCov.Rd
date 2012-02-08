@@ -78,9 +78,9 @@ C. Jessica E. Metcalf, Sean M. McMahon, Roberto Salguero-Gomez & Eelke Jongejans
 # Generate relevant data, build objects
 #dff <- generateDataStoch()
 #print(head(dff))
-#gr1 <- makeGrowthObjManyCov(dff, explanatoryVariables = "size+size2+covariate1")
-#sv1 <- makeSurvObjManyCov(dff, explanatoryVariables = "size+size2+covariate2")
-#fv1 <- makeFecObj(dff, explanatoryVariables = "size+size2",Transform="log")
+#gr1 <- makeGrowthObj(dff, Formula = sizeNext~size+size2+covariate1)
+#sv1 <- makeSurvObj(dff, Formula = surv~size+size2+covariate2)
+#fv1 <- makeFecObj(dff, Formula =fec~size+size2,Transform="log")
 
 # Generate time series of covariates for which growth rate is required
 # here set to be seasonal environment. NOTE that the order of covariates
@@ -94,7 +94,7 @@ C. Jessica E. Metcalf, Sean M. McMahon, Roberto Salguero-Gomez & Eelke Jongejans
 #st <- trackPopStructManyCov(covariate = covMatTest, nRunIn = 2*10, 
 #tMax = length(tVals), growthObj = gr1, survObj = sv1, fecObj = fv1, 
 #nBigMatrix = 100, minSize = 2*min(dff$size, na.rm = TRUE), 
-#maxSize = 1.5*max(dff$size, na.rm = TRUE), nMicrosites = 10)
+#maxSize = 1.5*max(dff$size, na.rm = TRUE), nMicrosites = 0)
 
 # Function to plot output
 #plotResultsStochStruct(tVals = tVals, st = st, covTest = covTest)

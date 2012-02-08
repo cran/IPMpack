@@ -86,7 +86,8 @@ getIPMoutputDirect <- function(survObjList,growObjList,targetSize=c(),
 	}} else { surv.par <- grow.par <- c()}
 	
 	#set up storage
-	if (is.data.frame(discreteTrans)) nDisc <- ncol(discreteTrans) else nDisc <- 0
+	if (class(discreteTrans)=="discreteTrans") nDisc <- (ncol(discreteTrans@discreteTrans)-1) else nDisc <- 0
+	
 	if (class(envMat)!="NULL") nEnv <- envMat@nEnvClass else nEnv <- 1
 	LE <- pTime <- matrix(NA,nsamp,(nBigMatrix+nDisc)*nEnv)
 	if (class(fecObjList)=="NULL") {
@@ -103,7 +104,7 @@ getIPMoutputDirect <- function(survObjList,growObjList,targetSize=c(),
 		
 		if (!cov) {
 			Tmatrix <- createIPMTmatrix(nBigMatrix = nBigMatrix, minSize = minSize, 
-					maxSize = maxSize, growObj = growObjList[[k]],
+					maxSize = maxSize,  growObj = growObjList[[k]],
 					survObj = survObjList[[k]],discreteTrans=discreteTrans,
 					integrateType=integrateType, correction=correction) 
 			
@@ -123,7 +124,7 @@ getIPMoutputDirect <- function(survObjList,growObjList,targetSize=c(),
 		if (class(fecObjList)!="NULL") {
 			if (!cov) { 
 				Fmatrix <- createIPMFmatrix(nBigMatrix = nBigMatrix, minSize = minSize, 
-						maxSize = maxSize, 
+						maxSize = maxSize,  
 						fecObj=fecObjList[[k]],
 						integrateType=integrateType, correction=correction)
 			} else {
@@ -216,7 +217,7 @@ picSurv <- function(dataf,survObj,ncuts=20,...) {
 		plot(as.numeric(psz),as.numeric(ps),pch=19,
 				xlab="Size at t", ylab="Survival to t+1",main="Survival",...)
 		#Plot fitted models
-		points(dataf$size[order(dataf$size)],surv(dataf$size[order(dataf$size)],1,survObj),type="l",col=2)
+		points(dataf$size[order(dataf$size)],surv(dataf$size[order(dataf$size)],data.frame(covariate=1),survObj),type="l",col=2)
 	} else {
 		plot(as.numeric(psz),as.numeric(ps),
 				type="n",pch=19,xlab="Size at t", ylab="Survival to t+1",main="Survival",...)
@@ -390,6 +391,9 @@ generateData <- function(nSamp=1000){
 	dataf <- data.frame(size=size,sizeNext=sizeNext,surv=surv,
 			covariate=covariate,covariateNext=covariateNext,
 			fec=fec, stage=stage,stageNext=stageNext)
+	
+	dataf$sizeNext[dataf$surv==0] <- NA
+	
 	return(dataf)
 }
 
@@ -425,6 +429,7 @@ generateDataDiscrete <- function(){
 			data.frame(size=NA,sizeNext=rnorm(113,3,2),surv=1,fec=0,
 					stage=c(rep("seedAge1",33),rep("seedOld",30),rep(NA,50)),
 					stageNext=c("continuous"),number=1))
+	
 	
 	return(dataf)
 }
@@ -462,6 +467,9 @@ generateDataStoch <- function(){
 	dataf <- data.frame(size=size,sizeNext=sizeNext,surv=surv,
 			covariate1=covariate1,covariate2=covariate2,covariate3=covariate3,
 			fec=fec, stage=stage,stageNext=stageNext, number=rep(1,length(size)))
+	
+	dataf$sizeNext[dataf$surv==0] <- NA
+	
 	return(dataf)
 }
 
@@ -471,21 +479,23 @@ generateDataStoch <- function(){
 
 makeListIPMs <- function(dataf, nBigMatrix=10, minSize=-2,maxSize=10, 
 		integrateType="midpoint", correction="none",
-		explSurv="size+size2+covariate",explGrow="size+size2+covariate", 
-		regType="constantVar",responseType="sizeNext",explFec="size",Family="gaussian", 
+		explSurv=surv~size+size2+covariate,
+		explGrow=sizeNext~size+size2+covariate, 
+		regType="constantVar",explFec=fec~size,Family="gaussian", 
 		Transform="none",fecConstants=data.frame(NA)) {
 	
 	#convert to 1:n for indexing later
 	dataf$covariate <- as.factor(dataf$covariate)
 	levels(dataf$covariate) <- 1:length(unique(dataf$covariate))
 	
-	sv1 <- makeSurvObj(dataf,
-			explanatoryVariables=explSurv)
-	gr1 <- makeGrowthObj(dataf,
-			explanatoryVariables=explGrow,
-			responseType=responseType,
+	print(explSurv)
+	sv1 <- makeSurvObj(dataf=dataf,
+			Formula=explSurv)
+	gr1 <- makeGrowthObj(dataf=dataf,
+			Formula=explGrow,
 			regType=regType)
-	fv1 <- makeFecObj(dataf,explanatoryVariables=explFec, Family=Family, Transform=Transform, 
+	
+	fv1 <- makeFecObj(dataf=dataf,Formula=explFec, Family=Family, Transform=Transform, 
 			fecConstants=fecConstants) 
 	
 	covs <- unique(dataf$covariate)
@@ -497,10 +507,11 @@ makeListIPMs <- function(dataf, nBigMatrix=10, minSize=-2,maxSize=10,
 	for (k in 1:length(covs)) { 
 		
 		tpF <- createIPMFmatrix(nBigMatrix = nBigMatrix, minSize = minSize,
-				maxSize = maxSize, chosenCov = k,
+				maxSize = maxSize, chosenCov = data.frame(covariate=as.factor(k)),
 				fecObj = fv1,integrateType=integrateType, correction=correction)
 		tpS <- createIPMTmatrix(nBigMatrix = nBigMatrix, minSize = minSize,
-				maxSize = maxSize, chosenCov = k,growObj = gr1, survObj = sv1,
+				maxSize = maxSize, chosenCov = data.frame(covariate=as.factor(k)),
+				growObj = gr1, survObj = sv1,
 				integrateType=integrateType, correction=correction)
 		IPM.list[[k]] <- tpF+tpS
 	}
@@ -508,6 +519,143 @@ makeListIPMs <- function(dataf, nBigMatrix=10, minSize=-2,maxSize=10,
 	
 }
 
+
+
+### check variance of mortality
+#mean(c(2.31,0.83,3.50,1.28,-0.16,-0.75,0.63,0.87,1.66,2.39,0.92,0.19,1.04,1.84,3.10,2.28))
+#var(c(2.31,0.83,3.50,1.28,-0.16,-0.75,0.63,0.87,1.66,2.39,0.92,0.19,1.04,1.84,3.10,2.28))
+### check variance of growth
+#mean(c(1.43,1.43,0.85,1.25,1.15,1.22,1.07,0.81,0.98,1.02,0.89,1.27,1.08,1.3,1.4,1.03))
+#var(c(1.43,1.43,0.85,1.25,1.15,1.22,1.07,0.81,0.98,1.02,0.89,1.27,1.08,1.3,1.4,1.03))
+
+### simulation Carlina ######################################################
+
+## Function to simulate something a bit like Carlina
+##
+## Parameters - nSamp - starting pop sizes
+#             - nYrs - no years in simulation
+#             - nSampleYrs - no years to extract for the data
+#             - ... bunch of parameters
+#             - meanYear - means for year effects
+#             - matVarYear - variance covariances for year effects
+#
+# Returns - list including dataf - data-frame of data
+#                                - various of the simulation parameters for convenience
+
+simulateCarlina <- function(nSamp=2000,nYrs=1000,nSampleYrs=15,
+		m0=-1.37,ms=0.59,
+		b0=-12.05,bs=3.64,
+		A=-1,B=2,
+		ag=1.13,bg=0.74,sig=sqrt(0.095),
+		mean.kids=3.0,sd.kids=0.52,
+		meanYear=c(0,0,0),
+		matVarYear=matrix(c(1.34,0.1,0,0.1,0.04,0,0,0,0.01),3,3)) {
+		
+	#initiate and set up year index
+	sizes <- rnorm(nSamp,3,0.5)
+	startYr <- (nYrs-nSampleYrs)
+	
+	#recruits
+	nrec <- c(20,42,12,17,8,19,58,45,44,2,56,25,75,92,94,6,4,34,104)
+	
+	#total plants
+	totpl <- c(21,57,47,25,25,33,88,94,97,26,85,80,122,175,160,10,6,189)
+	
+	
+	#set up dataframe
+	dataf <- data.frame(sizes=c(),sizeNext=c(),surv=c(),flower=c(),fec=c(),nSeedlings=c(),cg.year=c(),m.year=c(),b.year=c())
+	
+	for (t in 1:nYrs) {
+		
+		#yr effects
+		nSeedlings <- sample(nrec,size=1,replace=FALSE)
+		#stoch sims
+		tmp <- rmvnorm(1,mean=meanYear,sigma=matVarYear)
+		#print(tmp)
+		
+		m.year <- tmp[1]
+		cg.year <- tmp[2]
+		b.year <- tmp[3]
+		ns <- length(sizes)
+		
+		if (ns>0) { 
+			#survival
+			sx <- 1*(logit(m0+ms*sizes+m.year)>runif(ns))
+			#flowering
+			fx <- 1*(logit(b0+bs*sizes)>runif(ns))
+			#fertility
+			seedsx <- exp(A+B*sizes)*fx*sx
+			seedsx[seedsx>0] <- rpois(sum(seedsx>0),seedsx[seedsx>0])
+		} else {
+			sx <- fx <- seedsx <- c()
+			print(c("extinct in year ", t))
+		}
+		
+		pEst <- min(nSeedlings/max(sum(seedsx),1),1)
+		
+		babies <- rnorm(ceiling(pEst*max(sum(seedsx),1)),mean.kids+b.year,sd.kids) #will end up with nrec babies at least 
+		if (length(babies)<nSeedlings) nSeedlings <- length(babies)
+		
+		#growth
+		sizeNext <- rnorm(length(sizes),ag+bg*sizes+cg.year,sig)
+		
+		#remove dead or flowered
+		fx[sx==0] <- NA
+		sizeNext[sx==0 | fx==1] <- NA
+		
+		#storage
+		if (t>startYr) {
+			#print(t)
+			dataf <- rbind(dataf,
+					data.frame(size=sizes,sizeNext=sizeNext,
+							surv=1*sx,flower=1*fx,fec=seedsx,year=(rep(t,length(sizes))),
+							nSeedlings=rep(nSeedlings,length(sizes)),m.year=rep(m.year,length(sizes)),
+							cg.year=rep(cg.year,length(sizes)),b.year=rep(b.year,length(sizes)), offspringNext=rep(NA,length(sizes))))
+			#print(head(dataf))
+			dataf <- rbind(dataf,
+					data.frame(size=rep(NA,length(babies)),sizeNext=babies,surv=rep(NA,length(babies)),
+							flower=rep(NA,length(babies)),
+							fec=rep(NA,length(babies)),year=(rep(t,length(babies))),
+							nSeedlings=rep(nSeedlings,length(babies)),m.year=rep(m.year,length(babies)),
+							cg.year=rep(cg.year,length(babies)),b.year=rep(b.year,length(babies)), offspringNext=rep("sexual",length(babies))))
+		}
+		
+		#new pop
+		#print(cbind(sizes,sx,fx))
+		sizes <- c(sizes[sx==1 & fx==0 & !is.na(fx)],babies)
+		if (length(sizes)==0) print("extinct")
+		
+	}
+	
+	
+	list.par <- list(m0=m0,ms=ms,
+			b0=b0,bs=bs,
+			A=A,B=B,
+			ag=ag,bg=bg,sig=sig,
+			mean.kids=mean.kids,sd.kids=sd.kids,
+			meanYear=meanYear,
+			matVarYear=matVarYear,
+			nrec=nrec)
+	
+	dataf$fec[dataf$fec==0] <- NA
+	
+	return(list(dataf=dataf,meanYear=meanYear,matVarYear=matVarYear,list.par=list.par))
+	
+}
+
+
+#Find years where can estimate all three stochastic vital rates(survival, growth and baby size)
+.identifyPossibleYearsCarlina <- function(dataf){
+	
+	yr1 <- table(dataf$year[!is.na(dataf$size) & !is.na(dataf$sizeNext) & is.na(dataf$offspringNext)])
+	yr2 <- table(dataf$year[!is.na(dataf$size) & !is.na(dataf$surv) & is.na(dataf$offspringNext)])
+	yr3 <- table(dataf$year[!is.na(dataf$sizeNext) & !is.na(dataf$offspringNext)])
+	
+	good.yrs <- intersect(as.numeric(as.character(names(yr1)[yr1>2])),as.numeric(as.character(names(yr2))[yr2>2]))
+	good.yrs <- intersect(good.yrs,as.numeric(as.character(names(yr3)[yr3>2])))
+	
+	return(is.element(dataf$year,good.yrs))
+}
 
 
 
@@ -787,9 +935,8 @@ createMPMFmatrix <- function(dataf, bins,offspringClasses=1, offspringProp=1, nE
 # Returns - list with a summary table of covariates and scores, and a sub-list of growth or survival objects.
 #
 growthModelComp <- function(dataf, 
-		expVars = c("1", "size", "size + size2"), 
+		expVars = c(sizeNext~1, sizeNext~size, sizeNext~size + size2), 
 		regressionType = "constantVar",
-		respType = "sizeNext",
 		testType = "AIC",
 		makePlot = FALSE,
 		mainTitle = "",
@@ -802,29 +949,29 @@ growthModelComp <- function(dataf,
 	i <- 1
 	for(v in 1:varN) {
 		for(t in 1:typeN) {
-			grObj[[i]] <- makeGrowthObj(dataf = dataf, regType = regressionType[t], explanatoryVariables = expVars[v], responseType = respType) 
+			grObj[[i]] <- makeGrowthObj(dataf = dataf, regType = regressionType[t], Formula = expVars[[v]]) 
 			if (length(grep("decline",tolower(as.character(class(grObj[[i]])))))>0) { 
-				summaryTable <- rbind(summaryTable, cbind(expVars[v], regressionType[t], respType, match.fun(testType)(grObj[[i]]@fit$fit)))
+				summaryTable <- rbind(summaryTable, cbind(as.character(unlist(expVars))[v], regressionType[t],  match.fun(testType)(grObj[[i]]@fit$fit)))
 			} else { 
-			summaryTable <- rbind(summaryTable, cbind(expVars[v], regressionType[t], respType, match.fun(testType)(grObj[[i]]@fit)))
+			summaryTable <- rbind(summaryTable, cbind(as.character(unlist(expVars))[v], regressionType[t],  match.fun(testType)(grObj[[i]]@fit)))
 			}	
 			i <- i + 1
 		}
 	}
 	summaryTable <- as.data.frame(summaryTable)
-	names(summaryTable) <- c("Exp. Vars", "Reg. Type", "Resp. Type", testType)
+	names(summaryTable) <- c("Exp. Vars", "Reg. Type", testType)
 	outputList <- list(summaryTable = summaryTable, growthObjects = grObj)
 	
 	# PLOT SECTION #
 	if(makePlot == TRUE) {
-		plotGrowthModelComp(grObj = grObj, summaryTable = summaryTable, dataf = dataf, expVars = expVars, respType = respType, testType = "AIC",  plotLegend = TRUE, mainTitle = mainTitle, legendPos, ...)
+		plotGrowthModelComp(grObj = grObj, summaryTable = summaryTable, dataf = dataf, expVars = expVars,  testType = "AIC",  plotLegend = TRUE, mainTitle = mainTitle, legendPos, ...)
 	}
 	return(outputList)
 }
 
 
 survModelComp <- function(dataf, 
-		expVars = c("1", "size", "size + size2"), 
+		expVars = c(surv~1, surv~size, surv~size + size2), 
 		testType = "AIC",
 		makePlot = FALSE,
 		mainTitle = "", ncuts = 20,
@@ -835,8 +982,8 @@ survModelComp <- function(dataf,
 	svObj <- vector("list", length = treatN)
 	i <- 1
 	for(v in 1:varN) {
-		svObj[[i]] <- makeSurvObj(dataf = dataf, explanatoryVariables = expVars[v]) 
-		summaryTable <- rbind(summaryTable, cbind(expVars[v], match.fun(testType)(svObj[[i]]@fit)))
+		svObj[[i]] <- makeSurvObj(dataf = dataf, Formula = expVars[[v]]) 
+		summaryTable <- rbind(summaryTable, cbind(as.character(unlist(expVars))[v], match.fun(testType)(svObj[[i]]@fit)))
 		i <- i + 1
 	}
 	summaryTable <- as.data.frame(summaryTable)
@@ -854,31 +1001,35 @@ survModelComp <- function(dataf,
 # Plot functions for model comparison.  Plots the series of fitted models for growth and survival objects.  
 # Can plot a legend with the model covariates and model test criterion scores (defaults to AIC).
 
-plotGrowthModelComp <- function(grObj, summaryTable, dataf, expVars, respType = "sizeNext", testType = "AIC", plotLegend = TRUE, mainTitle = "", legendPos = "topright", ...) {
+plotGrowthModelComp <- function(grObj, summaryTable, dataf, expVars,  testType = "AIC", plotLegend = TRUE, mainTitle = "", legendPos = "topright", ...) {
 	treatN <- length(grObj)
 	sizeSorted <- unique(sort(dataf$size))
-	if(respType == "sizeNext") {
+	if(length(grep("sizeNext", unlist(as.character(expVars))))) {
 		y.lab <- "Size at t + 1"
 		dataSizeNext <- dataf$sizeNext
 	}
-	if(respType == "incr") {
+	if(length(grep("incr", unlist(as.character(expVars))))) {
 		y.lab <- "Growth"
 		dataSizeNext <- dataf$sizeNext - dataf$size
 	}
-	if(respType == "logincr"){
+	if(length(grep("logincr", unlist(as.character(expVars))))){
 		y.lab <- "log(growth)"
 		dataSizeNext <- log(dataf$sizeNext - dataf$size)
 	}
 	plot(dataf$size, dataSizeNext, pch = 19, xlab = "Size at t", ylab = y.lab, main = mainTitle, cex = 0.8,...)
 	for(p in 1:treatN) {
-		newd <- .makeCovDf(sizeSorted, expVars[p])
+		
+		#PROBLEM HERE 
+		expVarsHere <- paste(attr(terms((expVars[[p]])),"term.labels"),collapse="+")
+	
+		newd <- .makeCovDf(sizeSorted, expVarsHere)
 		if (length(grep("decline",tolower(as.character(class(grObj[[p]])))))>0) {
 			pred.size <- .predictMuX(grObj[[p]], newd)
 		} else { pred.size <- predict(grObj[[p]]@fit, newd, type = "response")}
 		lines(sizeSorted, pred.size, type = "l", col = (p + 1))
 	}
 	if(plotLegend) {
-		legend(legendPos, legend = sprintf("%s: %s = %.1f", expVars, testType, as.numeric(as.character(summaryTable[,4]))), col = c(2:(p + 1)), lty = 1, xjust = 1, bg = "white")
+		legend(legendPos, legend = sprintf("%s: %s = %.1f", expVars, testType, as.numeric(as.character(summaryTable[,3]))), col = c(2:(p + 1)), lty = 1, xjust = 1, bg = "white")
 	}
 }
 
@@ -892,8 +1043,9 @@ plotSurvModelComp <- function(svObj, summaryTable, dataf,  expVars, testType = "
 	binnedSurv <- tapply(osSurv, as.numeric(cut(osSize, breaks=ncuts)), mean, na.rm = TRUE) #bin Survival probabilities
 	plot(binnedSize, binnedSurv, pch = 19, xlab = "Size at t", ylab = "Survival to t + 1", main = mainTitle, cex = 0.8,...)
 	for(p in 1:treatN) {
-		newd <- .makeCovDf(osSize, expVars[p])
-		lines(dataf$size[order(dataf$size)], surv(dataf$size[os], 1, svObj[[p]]), col = (p + 1))           
+		expVarsHere <- paste(attr(terms(expVars[[p]]),"term.labels"),collapse="+")
+		newd <- .makeCovDf(osSize, expVarsHere[p])
+		lines(dataf$size[order(dataf$size)], surv(dataf$size[os], data.frame(covariate=1), svObj[[p]]), col = (p + 1))           
 	}
 	if(plotLegend) {
 		legend(legendPos, legend = sprintf("%s: %s = %.1f", expVars, testType, as.numeric(as.character(summaryTable[,2]))), col = c(2:(p + 1)), lty = 1, xjust = 1, bg = "white")
@@ -911,7 +1063,7 @@ addPdfGrowthPic <- function(respType = "sizeNext",
 		scalar=100,
 		growthObjList,
 		cols=1:5,
-		cov=1,
+		cov=data.frame(covariate=1),
 		minShow=1e-2,
 		jitt=2,  #how far apart should pdfs be if you are plotting several
 		...){
@@ -946,7 +1098,7 @@ addPdfGrowthPic <- function(respType = "sizeNext",
 		}}
 }
 
-## Function to fit of these and output a list of growth objects
+## Function to take fit of these and output a list of growth objects
 getListRegObjects <- function(Obj,nsamp=1000) {
 	
 	require(mvtnorm)
@@ -966,6 +1118,27 @@ getListRegObjects <- function(Obj,nsamp=1000) {
 	return(objList)
 }
 
+
+## Function to coerce Growth object to parameters and variance desired
+coerceGrowthObj <- function(growthObj,coeff,sd){
+
+	if (length(growthObj@fit$coefficients) !=length(coeff)) print("warning: number of desired coefficients to not match number of growth object coefficients")
+	growthObj@fit$coefficients <- coeff
+	
+	growthObj@sd <- sd
+	
+	return(growthObj)
+}
+
+
+## Function to coerce Survival object to parameters desired
+coerceSurvObj <- function(survObj,coeff){
+	
+	if (length(survObj@fit$coefficients) !=length(coeff)) print("warning: number of desired coefficients to not match number of growth object coefficients")
+	survObj@fit$coefficients <- coeff
+	
+	return(survObj)
+}
 
 
 

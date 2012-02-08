@@ -10,11 +10,10 @@ Wrapper function to build the IPM corresponding to every level of the discrete c
 \usage{
 makeListIPMs(dataf, nBigMatrix = 10, minSize = -2, maxSize = 10,	
 	integrateType = "midpoint", correction = "none", 
-		explSurv = "size+size2+covariate", 
-			explGrow = "size+size2+covariate", 
+		explSurv = surv ~ size + size2 + covariate, 
+		explGrow = sizeNext ~ size + size2 + covariate,
 				regType = "constantVar", 
-					responseType = "sizeNext", 
-						explFec = "size",  Family="gaussian", 
+						explFec = fec ~size,  Family="gaussian", 
 							Transform="none", fecConstants = data.frame(NA))
 }
 %- maybe also 'usage' for other objects documented here.
@@ -39,16 +38,13 @@ makeListIPMs(dataf, nBigMatrix = 10, minSize = -2, maxSize = 10,
 	correction.
 	}
  \item{explSurv}{
-	explanatory variables used in the survival model.
+	Formula and explanatory variables used in the survival model.
 	}
  \item{explGrow}{
 	explanatory variables used in the growth model.
 	}
  \item{regType}{
-	regression Type for growth (normal density function, truncated, etc).
-	}
- \item{responseType}{
-	regression response variable for growth (sizeNext, size, etc).
+	Formula and regression Type for growth (normal density function, truncated, etc).
 	}
  \item{explFec}{
 	explanatory variables used in the fecundity.

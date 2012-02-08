@@ -9,7 +9,9 @@ Builds a compound F matrix.
 }
 \usage{
 createCompoundFmatrix(nEnvClass = 2, nBigMatrix = 50,
-minSize = -1, maxSize = 50, envMatrix, fecObj, integrateType, correction)
+minSize = -1, maxSize = 50, envMatrix, fecObj, integrateType="midpoint", 
+correction="none",
+preCensus = TRUE, survObj = NULL, growObj = NULL)
 }
 %- maybe also 'usage' for other objects documented here.
 \arguments{
@@ -41,6 +43,25 @@ minSize = -1, maxSize = 50, envMatrix, fecObj, integrateType, correction)
     multiply every column of the IPM by a constant sufficient to adjust
     values to those predicted for survival at that size. 
   }
+  \item{preCensus}{
+    logical (TRUE or FALSE), indicating whether the fecundity object should
+    represent an interval between pre-breeding or a post-breeding censusses.
+    defaults to TRUE (pre-breeding census), meaning that all reproduction 
+    and offspring rates required for the F matrix are embedded in fecObj. 
+    Alternatively, an F matrix based on post-breeding census (preCensus=FALSE)
+    requires additional survObj and growObj, to cover the survival and growth
+    of the parents until the reproduction event. 
+  }
+  \item{survObj}{
+    suvival object, describing the survival of parents from a census until 
+    the reproduction event starts (at some point during the inter-census time step. 
+  }
+  \item{growObj}{
+    growth object, describing the growth of parents that survive until the 
+    reproduction event starts. Warning: this growth object is still ignored in 
+    createIPMFmatrix in the current version of IPMpack. It will become functional 
+    in coming versions.  
+  }
 }
 \value{
   an object of class IPMmatrix with dimensions
@@ -68,11 +89,12 @@ C. Jessica E. Metcalf, Sean M. McMahon, Roberto Salguero-Gomez & Eelke Jongejans
 \examples{
 # Data with only continuous stage and two habitats
 dff <- generateData()
+dff$fec[dff$fec==0] <- NA
 Fmatrix <-createCompoundFmatrix(nBigMatrix = 20, 
 	minSize = min(dff$size, na.rm = TRUE), 
 		maxSize = max(dff$size, na.rm=TRUE), 
 			envMatrix = makeEnvObj(dff), 
-				fecObj = makeFecObj(dff, explanatoryVariables = "size+size2+covariate", 
+				fecObj = makeFecObj(dff, Formula = log(fec)~size+size2+covariate, 
 					Transform = "log"))
 
 image(1:nrow(Fmatrix), 1:ncol(Fmatrix), t(log(Fmatrix)), 
@@ -85,9 +107,10 @@ abline(v = length(Fmatrix@meshpoints)*(1:Fmatrix@nEnvClass))
 
 # Data with continuous and discrete stages
 dff <- generateDataDiscrete()
+dff$fec[dff$fec==0] <- NA
 dff$covariate <- sample(1:3, size = nrow(dff), replace = TRUE)
 dff$covariateNext <- sample(1:3, size = nrow(dff), replace = TRUE)
-fv1 <- makeFecObj(dff, explanatoryVariables = "size", Transform = "log", 
+fv1 <- makeFecObj(dff, Formula = log(fec)~size, Transform = "log", 
 	offspringSplitter=data.frame(continuous = 0.9, dormant = 0.1))
 Fmatrix <- createCompoundFmatrix(minSize = min(dff$size, na.rm=TRUE),
 maxSize = max(dff$size, na.rm = TRUE), envMatrix = makeEnvObj(dff), fecObj = fv1)

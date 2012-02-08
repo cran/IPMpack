@@ -26,230 +26,138 @@
 # Returns - a growth object                  
 #
 #
+
 makeGrowthObj <- function(dataf,
-		explanatoryVariables="size",
-		responseType="sizeNext",
-		regType="constantVar") {
+		Formula=sizeNext~size,
+		regType="constantVar",
+		Family="gaussian") {
 	
-	#subset data to include only growth of individuals
-	dataf<-subset(dataf,is.na(dataf$size)==FALSE&is.na(dataf$sizeNext)==FALSE)
-	if (length(dataf$offspringNext)>0) dataf<-subset(dataf,!dataf$offspringNext%in%c("sexual","clonal"))
+	dataf <- subset(dataf, is.na(dataf$size) == FALSE & is.na(dataf$sizeNext) == 
+					FALSE)
 	
-	if (responseType=="incr" & length(dataf$incr) == 0) {
+	if (length(dataf$offspringNext) > 0) 
+		dataf <- subset(dataf, !dataf$offspringNext %in% c("sexual", 
+						"clonal"))
+	
+	if (length(grep("incr", as.character(Formula))) > 0 & length(dataf$incr) == 0) {
 		print("building incr as sizeNext - size")
 		dataf$incr <- dataf$sizeNext - dataf$size
 	}
-	if (responseType=="logincr" & length(dataf$logincr) == 0) {
+	if (length(grep("logincr", as.character(Formula))) > 0 & length(dataf$logincr) == 0) {
 		print("building logincr as log(sizeNext - size) - pre-build if this is not appropriate")
 		dataf$logincr <- log(dataf$sizeNext - dataf$size)
 	}
 	
-	Formula <- as.formula(paste(responseType, '~', explanatoryVariables, sep = ''))
+	#eliminate growth in dead individual
+	if (length(grep("incr", as.character(Formula))) > 0) {
+		if (sum(!is.na(dataf$incr) & dataf$surv==0)>0) {
+		print("measures of growth exist where individual has died (surv==0); replacing these with NA")
+		dataf$incr[dataf$surv==0] <- NA
+	}}
+	if (length(grep("sizeNext", as.character(Formula))) > 0) { 
+		if(sum(!is.na(dataf$sizeNext) & dataf$surv==0)>0) {
+		print("measures of growth exist where individual has died (surv==0); replacing these with NA")		
+		dataf$sizeNext[dataf$surv==0] <- NA
+	}}
+	if (length(grep("logincr", as.character(Formula))) > 0) {
+		if (sum(!is.na(dataf$logincr) & dataf$surv==0)>0) {
+		print("measures of growth exist where individual has died (surv==0); replacing these with NA")		
+		dataf$logincr[dataf$surv==0] <- NA
+	}}
+	
 	#create appropriate size based covariates
 	dataf$size2 <- dataf$size ^ 2
 	dataf$size3 <- dataf$size ^ 3
-	if (length(grep("logsize", Formula)) > 0) dataf$logsize <- log(dataf$size)
+	if (length(grep("logsize", as.character(Formula))) > 0) dataf$logsize <- log(dataf$size)
 	
 	#setup for discrete covariates if data suggests may be implemented by the
 	#presence of "covariate" and "covariateNext"
-		if ("covariate" %in% strsplit(as.character(explanatoryVariables), "[+-\\*]")[[1]] & length(dataf$covariate) > 0) { 
+	if ("covariate" %in% unlist(strsplit(as.character(Formula), "[+-\\* ]")) & length(dataf$covariate) > 0) { 
 		dataf$covariate <- as.factor(dataf$covariate)
 		levels(dataf$covariate) <- 1:length(unique(dataf$covariate))
 	}
-	if ("covariateNext" %in% strsplit(as.character(explanatoryVariables), "[+-\\*]")[[1]] & length(dataf$covariateNext) > 0) { 
+	if ("covariateNext" %in% unlist(strsplit(as.character(Formula), "[+-\\* ]")) & length(dataf$covariateNext) > 0) { 
 		dataf$covariateNext <- as.factor(dataf$covariateNext)
 		levels(dataf$covariateNext) <- 1:length(unique(dataf$covariateNext))
 	}
-	#eval fit
-	if (regType == "constantVar")  {
-		fit <- lm(Formula, data=dataf)
-	} else { 
-		if (regType == "declineVar"){
-			require(nlme)
-			Formula <- as.formula(Formula)	
-			fit.here <- gls(Formula, na.action = na.omit, weights = varExp(form =  ~fitted(.)), data = dataf)
-			fit <- list(coefficients = fit.here$coefficients,
-						sigma = summary(fit.here)$sigma,	
+	#eval fit and make the objects
+	if (Family=="gaussian") { 
+		if (regType == "constantVar")  {
+			fit <- lm(Formula, data=dataf)
+		} else { 
+			if (regType == "declineVar"){
+				require(nlme)
+				fit.here <- gls(Formula, na.action = na.omit, weights = varExp(form =  ~fitted(.)), data = dataf)
+				fit <- list(coefficients = fit.here$coefficients,
 						sigmax2 = summary(fit.here)$sigma^2,
 						var.exp.coef = as.numeric(fit.here$modelStruct$varStruct[1]), 
 						fit = fit.here)
-		}
+				#print(class(fit.here))
+			}
+		}} else {
+		if (regType != "constantVar") print("Warning: your regType is ignored because a non-gaussian model is fitted using glm")
+		if (Family=="negbin"){
+			fit <- glm.nb(Formula, data=dataf)
+		} else {
+			fit <- glm(Formula, data=dataf, family=Family)
+		}           
 	}
+	
 	#make the objects
 	#with sizeNext as response
-	if (responseType == "sizeNext") { 
+	if (length(grep("sizeNext", as.character(Formula))) > 0) { 
 		
-		if (class(fit) == "lm") { 
+		if (class(fit)[1] == "lm") { 
 			gr1 <- new("growthObj")
 			gr1@fit <- fit
 			gr1@sd <- summary(fit)$sigma
 		} else {
-			if (class(fit.here) == "gls") { 
+			if (class(fit.here)[1] == "gls") { 
 				gr1 <- new("growthObjDeclineVar")
 				gr1@fit <- fit
 			} else {
-				print("unknown formula;
-								please use lm or gls for declining variance models")
-			}
-		}
+				if (class(fit)[1] == "glm") { 
+					if (Family=="poisson") { gr1 <- new("growthObjPois"); gr1@fit <- fit } else {print("unidentified object class")}
+				} else {
+					if (class(fit)[1] == "negbin") {
+						gr1 <- new("growthObjNegBin"); gr1@fit <- fit
+					} 
+				}
+			}}    
 	} else {
-		if (responseType == "incr") { 
+		if (length(grep("incr", as.character(Formula))) > 0) { 
 			
-			if (class(fit) == "lm") { 
+			if (class(fit)[1] == "lm") { 
 				gr1 <- new("growthObjIncr")
 				gr1@fit <- fit
 				gr1@sd <- summary(fit)$sigma
 			} else {
-				if (class(fit.here) == "gls") { 
+				if (class(fit.here)[1] == "gls") { 
 					gr1 <- new("growthObjIncrDeclineVar")
 					gr1@fit <- fit
-				} else {
-					print("unknown formula;
-									please use lm or gls for declining variance models")
-				}
+				} else {print("undefined object class")}
 			}
+			
+			
 		} else {
-			if (responseType == "logincr") {
-				
-				if (class(fit) == "lm") { 
+			if (length(grep("logincr", as.character(Formula))) > 0) { 					
+				if (class(fit)[1] == "lm") { 
 					gr1 <- new("growthObjLogIncr")
 					gr1@fit <- fit
 					gr1@sd <- summary(fit)$sigma
-					
 				} else {
-					if (class(fit.here) == "gls") { 
+					if (class(fit.here)[1] == "gls") { 
 						gr1 <- new("growthObjLogIncrDeclineVar")
 						gr1@fit <- fit
-					} else {
-						print("unknown formula;
-										please use lm or gls for declining variance models")
-					}
+					} else {print("undefined object class")}
 				}
 			}
-		}
+		}    
 	}
+	
 	return(gr1)
 }
 
-
-
-
-#More general function for growth than older versions listed below but now for multiple covariates
-#
-# Parameters - dataf - the data-frame (which must contain the headings found in the formulas)
-#              formula= - a model formula that requires
-#                    "sizeNext" or "incr" as a reponse variable
-#                    "size" as a possible covariate possibly with
-#                        other combinations including size2 (size^2), size3(size^3), logsize(log(size)
-#                        and potentially a discrete covariate (called covariate)
-#              responseType - the response variable desired, crucial for building
-#                             the right kind of object. Possible levels are "sizeNext", "incr", "logincr"
-#              regType - options are "constantVar" (i.e. use lm), declineVar (use gls with model for variance)
-# 
-# Returns - a growth object                  
-#
-#
-makeGrowthObjManyCov <- function(dataf,
-		explanatoryVariables = "size+size2+covariate1",
-		responseType = "sizeNext",
-		regType = "constantVar"){
-	
-	#subset data to include only growth of individuals
-	dataf<-subset(dataf,is.na(dataf$size)==FALSE&is.na(dataf$sizeNext)==FALSE)
-	if (length(dataf$offspringNext)>0) dataf<-subset(dataf,!dataf$offspringNext%in%c("sexual","clonal"))
-	
-	if (responseType == "incr" & length(dataf$incr) == 0) {
-		print("building incr as sizeNext-size")
-		dataf$incr <- dataf$sizeNext-dataf$size
-	}
-	
-	if (responseType == "logincr" & length(dataf$logincr) == 0) {
-		print("building logincr as log(sizeNext-size) - pre-build if this is not appropriate")
-		dataf$logincr <- log(dataf$sizeNext-dataf$size)
-	}
-	
-	Formula <- as.formula(paste(responseType, '~', explanatoryVariables, sep = ''))
-	
-	#create appropriate size based covariates
-	dataf$size2 <- dataf$size ^ 2
-	dataf$size3 <- dataf$size ^ 3
-	if (length(grep("logsize", Formula)) > 0) dataf$logsize <- log(dataf$size)
-	
-	#eval fit
-	if (regType == "constantVar")  {
-		fit <- lm(Formula, data = dataf)
-	} else { 
-		if (regType == "declineVar"){
-			require(nlme)
-			Formula <- as.formula(Formula)	
-			fit.here <- gls(Formula,	na.action = na.omit, weights = varExp(form =  ~fitted(.)), data = dataf)
-			fit <- list(coefficients=fit.here$coefficients,
-						sigma=summary(fit.here)$sigma,
-						sigmax2=summary(fit.here)$sigma^2,
-						var.exp.coef=as.numeric(fit.here$modelStruct$varStruct[1]),
-						fit=fit.here)
-			
-		}
-	}
-	
-	#make the objects
-	#with sizeNext as response
-	if (responseType == "sizeNext") { 
-		
-		if (class(fit) == "lm") { 
-			gr1 <- new("growthObjMultiCov")
-			gr1@fit <- fit
-			gr1@sd <- summary(fit)$sigma
-			
-		} else {
-			if (class(fit.here) == "gls") { 
-				gr1 <- new("growthObjMultiCovDeclineVar")
-				gr1@fit <- fit
-			} else {
-				print("unknown formula;
-								please use lm or gls for declining variance models")
-			}
-		}
-	} else {
-		if (responseType == "incr") { 
-			
-			if (class(fit) == "lm") { 
-				gr1 <- new("growthObjMultiCovIncr")
-				gr1@fit <- fit
-				gr1@sd <- summary(fit)$sigma
-				
-			} else {
-				if (class(fit.here) == "gls") { 
-					gr1 <- new("growthObjMultiCovIncrDeclineVar")
-					gr1@fit <- fit
-				} else {
-					print("unknown formula;
-									please use lm or gls for declining variance models")
-				}
-			}
-			
-		} else {
-			if (responseType == "logincr") {
-				
-				if (class(fit) == "lm") { 
-					gr1 <- new("growthObjMultiCovLogIncr")
-					gr1@fit <- fit
-					gr1@sd <- summary(fit)$sigma
-					
-				} else {
-					if (class(fit.here) == "gls") { 
-						gr1 <- new("growthObjMultiCovLogIncrDeclineVar")
-						gr1@fit <- fit
-					} else {
-						print("unknown formula;
-										please use lm or gls for declining variance models")
-					}
-				}
-			}
-		}
-	}
-	return(gr1)
-}
 
 
 
@@ -335,7 +243,7 @@ makegrowthObjHossfeld <- function(dataf) {
 #
 #
 makeSurvObj <- function(dataf,
-		explanatoryVariables="size+size2"){
+		Formula=surv~size+size2){
 	
 	#subset data to include only survival status of individuals with continuous size at the beginning of the transition
 	dataf<-subset(dataf,is.na(dataf$surv)==FALSE)
@@ -344,77 +252,37 @@ makeSurvObj <- function(dataf,
 	#build appropriate size based covariates
 	dataf$size2 <- dataf$size^2
 	dataf$size3 <- dataf$size^3
-	if (length(grep("logsize",explanatoryVariables))>0) dataf$logsize <- log(dataf$size)
+	if (length(grep("logsize",as.character(Formula)))>0) dataf$logsize <- log(dataf$size)
 	
-	#build formula
-	formula<-paste('surv','~',explanatoryVariables,sep='')
-	
-	#print(formula)
 	
 	#setup for discrete covariates if data suggests may be implemented by the
 	#presence of "covariate" and "covariateNext"
-	if ("covariate"%in%strsplit(as.character(explanatoryVariables),"[+-\\*]")[[1]]&length(dataf$covariate)>0) { 
+	if ("covariate" %in% unlist(strsplit(as.character(Formula), "[+-\\* ]")) & length(dataf$covariate) > 0) { 
 		dataf$covariate <- as.factor(dataf$covariate)
 		levels(dataf$covariate) <- 1:length(unique(dataf$covariate))
-		
 	}
-	if ("covariateNext"%in%strsplit(as.character(explanatoryVariables),"[+-\\*]")[[1]]&length(dataf$covariateNext)>0) { 
+	if ("covariateNext" %in% unlist(strsplit(as.character(Formula), "[+-\\* ]")) & length(dataf$covariateNext) > 0) { 
 		dataf$covariateNext <- as.factor(dataf$covariateNext)
 		levels(dataf$covariateNext) <- 1:length(unique(dataf$covariateNext))
 	}
 	
 	
-	#  print(formula)
-	
-	fit <- glm(formula,family=binomial,data=dataf)
+	fit <- glm(Formula,family=binomial,data=dataf)
 	sv1 <- new("survObj")
 	sv1@fit <- fit
 	return(sv1)
 }
 
 
-#More general function for survival than older versions (listed below) 
-#
-# Parameters - dataf - the data-frame (which must contain the headings found in the formulas)
-#              formula - a model formula that requires
-#                    "surv" as a reponse variable
-#                    "size" as a possible covariate possibly with
-#                        other combinations including size2 (size^2), size3(size^3), logsize(log(size)
-#                        and potentially a discrete covariate (called covariate)
-# 
-# Returns - a survival object                   
-#
-#
-makeSurvObjManyCov <- function(dataf,
-		explanatoryVariables="size+size2+covariate1"){
-	
-	#subset data to include only survival status of individuals with continuous size at the beginning of the transition
-	dataf<-subset(dataf,is.na(dataf$surv)==FALSE)
-	if (length(dataf$offspringNext)>0) dataf<-subset(dataf,!dataf$offspringNext%in%c("sexual","clonal"))
-	
-	#build appropriate size based covariates
-	dataf$size2 <- dataf$size^2
-	dataf$size3 <- dataf$size^3
-	if (length(grep("logsize",explanatoryVariables))>0) dataf$logsize <- log(dataf$size)
-	
-	#build formula
-	formula<-paste('surv','~',explanatoryVariables,sep='')
-	
-	fit <- glm(formula,family=binomial,data=dataf)
-	sv1 <- new("survObjMultiCov")
-	sv1@fit <- fit
-	return(sv1)
-}
-
 
 # 3. fecundity models  #######################################################################################################
 
+
 makeFecObj <- function(dataf,
 		fecConstants=data.frame(NA),
-		explanatoryVariables="size",
+		Formula=list(fec~size),
 		Family="gaussian",
 		Transform="none",
-		fecNames=NA,
 		meanOffspringSize=NA,
 		sdOffspringSize=NA,
 		offspringSplitter=data.frame(continuous=1),
@@ -423,6 +291,14 @@ makeFecObj <- function(dataf,
 		offspringSizeExplanatoryVariables="1"){
 	
 	
+	#make sure Formula is a formula or a list of formulas
+	if (class(Formula)=="list") {
+		if (class(Formula[[1]])!="formula") stop("Error - the entries in your Formula list should be of class 'formula': e.g. fec~size without quotation marks")
+	} else {
+		if (class(Formula)!="formula") stop("Error - the Formula entry should by of class 'formula' or a list of such entries:  e.g. fec~size without quotation marks")
+        Formula <- list(Formula)	
+	}
+			
 	#if stage or stageNext do not exist in dataf, create them assuming that 
 	#everything is continuous. 
 	if (length(dataf$stage)==0) { 
@@ -435,7 +311,7 @@ makeFecObj <- function(dataf,
 		dataf$stageNext[dataf$surv==0] <- "dead"
 		dataf$stageNext <- as.factor(dataf$stageNext)
 	}
-		
+	
 	#order stage names from discrete to continuous
 	stages <- names(tapply(c(levels(dataf$stage),levels(dataf$stageNext)),c(levels(dataf$stage),levels(dataf$stageNext)),length))
 	stages <- stages[stages!="dead"] 
@@ -450,7 +326,6 @@ makeFecObj <- function(dataf,
 	##warnings
 	if (ncol(offspringSplitter)>1 & (ncol(offspringSplitter)-1)!=ncol(fecByDiscrete)) {
 		print("Warning - offspring splitter indicates more than just continuous stages. No fecundity by the discrete stages supplied in fecByDiscrete; assumed that is 0")
-		#fecByDiscrete <- matrix(0,col(offspringSplitter)-1,col(offspringSplitter)-1)
 		fecByDiscrete <- offspringSplitter[,1:(ncol(offspringSplitter)-1)]
 		fecByDiscrete[] <- 0
 	}
@@ -460,75 +335,82 @@ makeFecObj <- function(dataf,
 		offspringSplitter <- offspringSplitter / sum(offspringSplitter) 
 	}
 	
-	if ("covariate"%in%strsplit(as.character(explanatoryVariables),"[+-\\*]")[[1]]&length(dataf$covariate)>0) { 
+	if ("covariate" %in% unlist(strsplit(as.character(Formula), "[+-\\* ]")) & length(dataf$covariate) > 0) { 
 		dataf$covariate <- as.factor(dataf$covariate)
 		levels(dataf$covariate) <- 1:length(unique(dataf$covariate))
-		
 	}
-	if ("covariateNext"%in%strsplit(as.character(explanatoryVariables),"[+-\\*]")[[1]]&length(dataf$covariateNext)>0) { 
+	if ("covariateNext" %in% unlist(strsplit(as.character(Formula), "[+-\\* ]")) & length(dataf$covariateNext) > 0) { 
 		dataf$covariateNext <- as.factor(dataf$covariateNext)
 		levels(dataf$covariateNext) <- 1:length(unique(dataf$covariateNext))
 	}
-	#print(table(dataf$covariate))
 	
 	f1 <- new("fecObj")
 	
 	dataf$size2 <- dataf$size^2
-	if (length(grep("logsize",as.character(explanatoryVariables)))>0) dataf$logsize <- log(dataf$size)
+	dataf$size3 <- dataf$size^3
+	if (length(grep("logsize",unlist(as.character(Formula))))>0) dataf$logsize <- log(dataf$size)
 	
-	if (is.na(fecNames[1])) fecNames <- names(dataf)[grep("fec",names(dataf))]
-	if (length(fecNames)>length(explanatoryVariables)) {
-		misE <- (length(explanatoryVariables)+1):length(fecNames)
-		print(c("number in explanatoryVariables not the same as the number of fecundity columns in the data file, using default of `size' for missing ones which are:",fecNames[misE],". (which might be exactly what you want)"))
-		explanatoryVariables <- c(explanatoryVariables,rep("size",length(fecNames)-length(explanatoryVariables)))
+	if (length(Formula)>length(Family)) {
+		misE <- (length(Family)+1):length(Formula)
+	#	print(misE)
+		print(c("number of families not the same as the number of Formula supplied, using default of `gaussian' for missing ones which are:",Formula[[misE]],". (which might be exactly what you want)"))
+		Family <- c(Family,rep("gaussian",length(Formula)-length(Family)))
 	}
-	if (length(fecNames)>length(Family)) {
-		misE <- (length(Family)+1):length(fecNames)
-		print(c("number of families not the same as the number of fecundity columns in the data file, using default of `gaussian' for missing ones which are:",fecNames[misE],". (which might be exactly what you want)"))
-		Family <- c(Family,rep("gaussian",length(fecNames)-length(Family)))
-	}
-	if (length(fecNames)>length(Transform)) {
-		misE <- (length(Transform)+1):length(fecNames)
-		print(c("number of transforms not the same as the number of fecundity columns in the data file, using default of `none' for missing ones which are:",fecNames[misE],". (which might be exactly what you want)"))
-		Transform <- c(Transform,rep("none",length(fecNames)-length(Transform)))
+	if (length(Formula)>length(Transform)) {
+		misE <- (length(Transform)+1):length(Formula)
+		print(c("number of transforms not the same as the number of fecundity columns in the data file, using default of `none' for missing ones which are:",Formula[[misE]],". (which might be exactly what you want)"))
+		Transform <- c(Transform,rep("none",length(Formula)-length(Transform)))
 	}
 	
-	for (i in 1:length(fecNames)) {
+	fecNames <- rep(NA,length(Formula))
+	for (i in 1:length(Formula)) {
+		
+		fecNames[i] <- all.vars(Formula[[i]])[1]
+		
 		if (Transform[i]=="log") dataf[,fecNames[i]] <- log(dataf[,fecNames[i]])
 		if (Transform[i]=="sqrt") dataf[,fecNames[i]] <- sqrt(dataf[,fecNames[i]])
 		if (Transform[i]=="-1") dataf[,fecNames[i]] <- dataf[,fecNames[i]]-1
 		dataf[!is.finite(dataf[,fecNames[i]]),fecNames[i]] <- NA
-		f1@fitFec[[i]] <- glm(paste(fecNames[i],'~',explanatoryVariables[i],sep=''),family=Family[i],data=dataf)
+		
+		
+		f1@fitFec[[i]] <- glm(Formula[[i]],family=Family[i],data=dataf)
 	}
 	
-	if (is.na(meanOffspringSize[1])|is.na(sdOffspringSize[1])) {
-		if (length(dataf$offspringNext)==0) {
-			offspringData<-subset(dataf,is.na(dataf$stage)&dataf$stageNext=="continuous")
+	
+	if (offspringSplitter$continuous>0) {
+		if (is.na(meanOffspringSize[1])|is.na(sdOffspringSize[1])) {
+			if (length(dataf$offspringNext)==0) {
+				offspringData<-subset(dataf,is.na(dataf$stage)&dataf$stageNext=="continuous")
+				if (nrow(offspringData) == 0) stop ("Error - no offspring size data are given: these can be given through either the meanOffspringSize and sdOffspringSize slots, or through individual data added to your data file (with stage equals NA, or a offspringNext column indicating 'sexual' offspring)")
+			} else {
+				offspringData<-subset(dataf,dataf$offspringNext=="sexual"&dataf$stageNext=="continuous")
+				if (nrow(offspringData) == 0) stop ("Error - no offspring size data are given: these can be given through either the meanOffspringSize and sdOffspringSize slots, or through individual data added to your data file (with stage equals NA, or a offspringNext column indicating 'sexual' offspring)")
+			}
+			## relationship defining offspring size - note that the mean value is ALWAYS taken from
+			## a lm now (but equivalent to just fitting an intercept if that is desired....)
+			## [worth keeping sd separate from lm though (extracted from lm or not) because otherwise is a pain to adjust (as shown in growth model)]
+			f1@offspringRel <- lm(paste('sizeNext~',offspringSizeExplanatoryVariables,sep=''),data=offspringData)
+			f1@sdOffspringSize <- summary(f1@offspringRel)$sigma
 		} else {
-			offspringData<-subset(dataf,dataf$offspringNext=="sexual"&dataf$stageNext=="continuous")
+			f1@offspringRel <- lm(rep(meanOffspringSize[1],21)~1)
+			f1@sdOffspringSize <- sdOffspringSize
 		}
-		## relationship defining offspring size - note that the mean value is ALWAYS taken from
-		## a lm now (but equivalent to just fitting an intercept if that is desired....)
-		## [worth keeping sd separate from lm though (extracted from lm or not) because otherwise is a pain to adjust (as shown in growth model)]
-		f1@offspringRel <- lm(paste('sizeNext~',offspringSizeExplanatoryVariables,sep=''),data=offspringData)
-		f1@sdOffspringSize <- summary(f1@offspringRel)$sigma
-	} else {
-		f1@offspringRel <- lm(rep(meanOffspringSize[1],21)~1)
-		f1@sdOffspringSize <- sdOffspringSize
-	}
-		
+	}	
+	
 	if (sum(dim(offspringTypeRates)==c(1,1))<2) {
 		if ((sum(offspringTypeRates==0,na.rm=T)+sum(offspringTypeRates==1,na.rm=T))<(ncol(offspringTypeRates)*nrow(offspringTypeRates))) stop("Error - in offspringTypeRates data.frame only 0's and 1's are allowed: a 1 indicates that a fecundity rate applies to that offspring type. ")
 		if (sum(names(offspringTypeRates)==names(offspringSplitter))<length(offspringSplitter)) stop("Error - the offspring names in offspringTypeRates should match those in offspringSplitter - and in the same order, with continuous last")
-		if (sum(rownames(offspringTypeRates)==c(fecNames,names(fecConstants)))<(length(fecNames)+length(fecConstants))) stop ("Error - the row names in offspringTypeRates should consist of (in order) the names of the fec columns in the dataset and then the names of the fecConstants.")
+		if (sum(rownames(offspringTypeRates)==c(fecNames,names(fecConstants)))<(length(Formula)+length(fecConstants))) stop ("Error - the row names in offspringTypeRates should consist of (in order) the names of the fec columns in the dataset and then the names of the fecConstants.")
 	} else {
-		offspringTypeRates <- as.data.frame(matrix(1,ncol=length(offspringSplitter),nrow=length(fecNames)+length(fecConstants)),row.names=c(fecNames,names(fecConstants)))
+		offspringTypeRates <- as.data.frame(matrix(1,ncol=length(offspringSplitter),nrow=length(Formula)+length(fecConstants)),row.names=c(fecNames,names(fecConstants)))
 		names(offspringTypeRates) <- names(offspringSplitter)
 	}
-
-	if (is.na(f1@sdOffspringSize)) 
-		print("Warning - could not estimate parameters for the distribution of offspring size; defaults must be supplied for meanOffspringSize and sdOffspringSize; you will not be able to construct an IPM without these values.")	
 	
+	if (length(f1@sdOffspringSize)>0) {
+		if (is.na(f1@sdOffspringSize)) {
+			print("Warning - could not estimate parameters for the distribution of offspring size; defaults must be supplied for meanOffspringSize and sdOffspringSize; you will not be able to construct an IPM without these values.")
+		}
+	}
 	
 	f1@fecNames <- fecNames
 	f1@fecConstants <- fecConstants
@@ -540,138 +422,6 @@ makeFecObj <- function(dataf,
 }
 
 
-
-## NO different from the above yet, except in what it produces
-
-makeFecObjManyCov <- function(dataf,
-		fecConstants=data.frame(NA),
-		explanatoryVariables="size",
-		Family="gaussian",
-		Transform="none",
-		fecNames=NA,
-		meanOffspringSize=NA,
-		sdOffspringSize=NA,
-		offspringSplitter=data.frame(continuous=1),
-		offspringTypeRates=data.frame(NA),
-		fecByDiscrete=data.frame(NA),
-		offspringSizeExplanatoryVariables="1"){
-	
-	
-	#if stage or stageNext do not exist in dataf, create them assuming that 
-	#everything is continuous. 
-	if (length(dataf$stage)==0) { 
-		dataf$stage <- rep("continuous",nrow(dataf))
-		dataf$stage[is.na(dataf$size)] <- NA
-		dataf$stage <- as.factor(dataf$stage)
-	}
-	if (length(dataf$stageNext)==0) {
-		dataf$stageNext <- rep("continuous",nrow(dataf))
-		dataf$stageNext[dataf$surv==0] <- "dead"
-		dataf$stageNext <- as.factor(dataf$stageNext)
-	}
-	
-	#order stage names from discrete to continuous
-	stages <- names(tapply(c(levels(dataf$stage),levels(dataf$stageNext)),c(levels(dataf$stage),levels(dataf$stageNext)),length))
-	stages <- stages[stages!="dead"] 
-	stages <- c(stages[stages!="continuous"],"continuous") 
-	if ((sum(names(offspringSplitter)%in%stages)/length(offspringSplitter))<1) {
-		stop("Error - the variable names in your offspringSplitter data.frame are not all part of the levels of stage or stageNext in your data file. Please fix this by adjusting your offspringSplitter entry to include the correct variable names, e.g. offspringSplitter=data.frame(continuous=.7,seedAge1=.3)")
-	}
-	dummy<-rep(0,length(stages));names(dummy)<-stages;dummy<-as.data.frame(t(as.matrix(dummy)))
-	for (i in names(offspringSplitter)) dummy[i]<-offspringSplitter[i]
-	offspringSplitter <- dummy
-	
-	##warnings
-	if (ncol(offspringSplitter)>1 & (ncol(offspringSplitter)-1)!=ncol(fecByDiscrete)) {
-		print("Warning - offspring splitter indicates more than just continuous stages. No fecundity by the discrete stages supplied in fecByDiscrete; assumed that is 0")
-		#fecByDiscrete <- matrix(0,col(offspringSplitter)-1,col(offspringSplitter)-1)
-		fecByDiscrete <- offspringSplitter[,1:(ncol(offspringSplitter)-1)]
-		fecByDiscrete[] <- 0
-	}
-	
-	if (sum(offspringSplitter)!=1) {
-		print("Warning - offspring splitter does not sum to 1. It is now rescaled to sum to 1.")
-		offspringSplitter <- offspringSplitter / sum(offspringSplitter) 
-	}
-	
-	if ("covariate"%in%strsplit(as.character(explanatoryVariables),"[+-\\*]")[[1]]&length(dataf$covariate)>0) { 
-		dataf$covariate <- as.factor(dataf$covariate)
-		levels(dataf$covariate) <- 1:length(unique(dataf$covariate))
-		
-	}
-	if ("covariateNext"%in%strsplit(as.character(explanatoryVariables),"[+-\\*]")[[1]]&length(dataf$covariateNext)>0) { 
-		dataf$covariateNext <- as.factor(dataf$covariateNext)
-		levels(dataf$covariateNext) <- 1:length(unique(dataf$covariateNext))
-	}
-	#print(table(dataf$covariate))
-	
-	f1 <- new("fecObjMultiCov")
-	
-	dataf$size2 <- dataf$size^2
-	if (length(grep("logsize",as.character(explanatoryVariables)))>0) dataf$logsize <- log(dataf$size)
-	
-	if (is.na(fecNames[1])) fecNames <- names(dataf)[grep("fec",names(dataf))]
-	if (length(fecNames)>length(explanatoryVariables)) {
-		misE <- (length(explanatoryVariables)+1):length(fecNames)
-		print(c("number in explanatoryVariables not the same as the number of fecundity columns in the data file, using default of `size' for missing ones which are:",fecNames[misE],". (which might be exactly what you want)"))
-		explanatoryVariables <- c(explanatoryVariables,rep("size",length(fecNames)-length(explanatoryVariables)))
-	}
-	if (length(fecNames)>length(Family)) {
-		misE <- (length(Family)+1):length(fecNames)
-		print(c("number of families not the same as the number of fecundity columns in the data file, using default of `gaussian' for missing ones which are:",fecNames[misE],". (which might be exactly what you want)"))
-		Family <- c(Family,rep("gaussian",length(fecNames)-length(Family)))
-	}
-	if (length(fecNames)>length(Transform)) {
-		misE <- (length(Transform)+1):length(fecNames)
-		print(c("number of transforms not the same as the number of fecundity columns in the data file, using default of `none' for missing ones which are:",fecNames[misE],". (which might be exactly what you want)"))
-		Transform <- c(Transform,rep("none",length(fecNames)-length(Transform)))
-	}
-	
-	for (i in 1:length(fecNames)) {
-		if (Transform[i]=="log") dataf[,fecNames[i]] <- log(dataf[,fecNames[i]])
-		if (Transform[i]=="sqrt") dataf[,fecNames[i]] <- sqrt(dataf[,fecNames[i]])
-		if (Transform[i]=="-1") dataf[,fecNames[i]] <- dataf[,fecNames[i]]-1
-		dataf[!is.finite(dataf[,fecNames[i]]),fecNames[i]] <- NA
-		f1@fitFec[[i]] <- glm(paste(fecNames[i],'~',explanatoryVariables[i],sep=''),family=Family[i],data=dataf)
-	}
-	
-	if (is.na(meanOffspringSize[1])|is.na(sdOffspringSize[1])) {
-		if (length(dataf$offspringNext)==0) {
-			offspringData<-subset(dataf,is.na(dataf$stage)&dataf$stageNext=="continuous")
-		} else {
-			offspringData<-subset(dataf,dataf$offspringNext=="sexual"&dataf$stageNext=="continuous")
-		}
-		## relationship defining offspring size - note that the mean value is ALWAYS taken from
-		## a lm now (but equivalent to just fitting an intercept if that is desired....)
-		## [worth keeping sd separate from lm though (extracted from lm or not) because otherwise is a pain to adjust (as shown in growth model)]
-		f1@offspringRel <- lm(paste('sizeNext~',offspringSizeExplanatoryVariables,sep=''),data=offspringData)
-		f1@sdOffspringSize <- summary(f1@offspringRel)$sigma
-	} else {
-		f1@offspringRel <- lm(rep(meanOffspringSize[1],21)~1)
-		f1@sdOffspringSize <- sdOffspringSize
-	}
-	
-	if (sum(dim(offspringTypeRates)==c(1,1))<2) {
-		if ((sum(offspringTypeRates==0,na.rm=T)+sum(offspringTypeRates==1,na.rm=T))<(ncol(offspringTypeRates)*nrow(offspringTypeRates))) stop("Error - in offspringTypeRates data.frame only 0's and 1's are allowed: a 1 indicates that a fecundity rate applies to that offspring type. ")
-		if (sum(names(offspringTypeRates)==names(offspringSplitter))<length(offspringSplitter)) stop("Error - the offspring names in offspringTypeRates should match those in offspringSplitter - and in the same order, with continuous last")
-		if (sum(rownames(offspringTypeRates)==c(fecNames,names(fecConstants)))<(length(fecNames)+length(fecConstants))) stop ("Error - the row names in offspringTypeRates should consist of (in order) the names of the fec columns in the dataset and then the names of the fecConstants.")
-	} else {
-		offspringTypeRates <- as.data.frame(matrix(1,ncol=length(offspringSplitter),nrow=length(fecNames)+length(fecConstants)),row.names=c(fecNames,names(fecConstants)))
-		names(offspringTypeRates) <- names(offspringSplitter)
-	}
-
-	if (is.na(f1@sdOffspringSize)) 
-		print("Warning - could not estimate parameters for the distribution of offspring size; defaults must be supplied for meanOffspringSize and sdOffspringSize; you will not be able to construct an IPM without these values.")	
-	
-	
-	f1@fecNames <- fecNames
-	f1@fecConstants <- fecConstants
-	f1@offspringSplitter <- offspringSplitter 
-	f1@offspringTypeRates <- offspringTypeRates 
-	f1@fecByDiscrete <- fecByDiscrete
-	f1@Transform <- Transform
-	return(f1)
-}
 
 
 # 3a. clonality models  #######################################################################################################
@@ -679,16 +429,18 @@ makeFecObjManyCov <- function(dataf,
 
 makeClonalObj <- function(dataf,
 		fecConstants=data.frame(NA),
-		explanatoryVariables="size",
+		Formula=list(fec~size),
 		Family="gaussian",
 		Transform="none",
-		fecNames=NA,
 		meanOffspringSize=NA,
 		sdOffspringSize=NA,
 		offspringSplitter=data.frame(continuous=1),
 		offspringTypeRates=data.frame(NA),
 		fecByDiscrete=data.frame(NA),
 		offspringSizeExplanatoryVariables="1"){
+	
+	#make sure Formula is a list
+	if (class(Formula)!="list") Formula <- c(Formula)
 	
 	
 	#if stage or stageNext do not exist in dataf, create them assuming that 
@@ -728,12 +480,11 @@ makeClonalObj <- function(dataf,
 		offspringSplitter <- offspringSplitter / sum(offspringSplitter) 
 	}
 	
-	if ("covariate"%in%strsplit(as.character(explanatoryVariables),"[+-\\*]")[[1]]&length(dataf$covariate)>0) { 
+	if ("covariate" %in% unlist(strsplit(as.character(Formula), "[+-\\* ]")) & length(dataf$covariate) > 0) { 
 		dataf$covariate <- as.factor(dataf$covariate)
 		levels(dataf$covariate) <- 1:length(unique(dataf$covariate))
-		
 	}
-	if ("covariateNext"%in%strsplit(as.character(explanatoryVariables),"[+-\\*]")[[1]]&length(dataf$covariateNext)>0) { 
+	if ("covariateNext" %in% unlist(strsplit(as.character(Formula), "[+-\\* ]")) & length(dataf$covariateNext) > 0) { 
 		dataf$covariateNext <- as.factor(dataf$covariateNext)
 		levels(dataf$covariateNext) <- 1:length(unique(dataf$covariateNext))
 	}
@@ -742,170 +493,41 @@ makeClonalObj <- function(dataf,
 	f1 <- new("fecObj")
 	
 	dataf$size2 <- dataf$size^2
-	if (length(grep("logsize",as.character(explanatoryVariables)))>0) dataf$logsize <- log(dataf$size)
+	dataf$size3 <- dataf$size^3
+	if (length(grep("logsize",unlist(as.character(Formula))))>0) dataf$logsize <- log(dataf$size)
 	
-	if (is.na(fecNames[1])) fecNames <- names(dataf)[grep("clon",names(dataf))]
-	if (length(fecNames)>length(explanatoryVariables)) {
-		misE <- (length(explanatoryVariables)+1):length(fecNames)
-		print(c("number in explanatoryVariables not the same as the number of fecundity columns in the data file, using default of `size' for missing ones which are:",fecNames[misE],". (which might be exactly what you want)"))
-		explanatoryVariables <- c(explanatoryVariables,rep("size",length(fecNames)-length(explanatoryVariables)))
+	if (length(Formula)>length(Family)) {
+		misE <- (length(Family)+1):length(Formula)
+		print(c("number of families not the same as the number of fecundity columns in the data file, using default of `gaussian' for missing ones which are:",Formula[[misE]],". (which might be exactly what you want)"))
+		Family <- c(Family,rep("gaussian",length(Formula)-length(Family)))
 	}
-	if (length(fecNames)>length(Family)) {
-		misE <- (length(Family)+1):length(fecNames)
-		print(c("number of families not the same as the number of fecundity columns in the data file, using default of `gaussian' for missing ones which are:",fecNames[misE],". (which might be exactly what you want)"))
-		Family <- c(Family,rep("gaussian",length(fecNames)-length(Family)))
-	}
-	if (length(fecNames)>length(Transform)) {
-		misE <- (length(Transform)+1):length(fecNames)
-		print(c("number of transforms not the same as the number of fecundity columns in the data file, using default of `none' for missing ones which are:",fecNames[misE],". (which might be exactly what you want)"))
-		Transform <- c(Transform,rep("none",length(fecNames)-length(Transform)))
+	if (length(Formula)>length(Transform)) {
+		misE <- (length(Transform)+1):length(Formula)
+		print(c("number of transforms not the same as the number of fecundity columns in the data file, using default of `none' for missing ones which are:",Formula[[misE]],". (which might be exactly what you want)"))
+		Transform <- c(Transform,rep("none",length(Formula)-length(Transform)))
 	}
 	
-	for (i in 1:length(fecNames)) {
-		if (Transform[i]=="log") dataf[,fecNames[i]] <- log(dataf[,fecNames[i]])
-		if (Transform[i]=="sqrt") dataf[,fecNames[i]] <- sqrt(dataf[,fecNames[i]])
-		if (Transform[i]=="-1") dataf[,fecNames[i]] <- dataf[,fecNames[i]]-1
-		dataf[!is.finite(dataf[,fecNames[i]]),fecNames[i]] <- NA
-		f1@fitFec[[i]] <- glm(paste(fecNames[i],'~',explanatoryVariables[i],sep=''),family=Family[i],data=dataf)
-	}
-	
-	if (is.na(meanOffspringSize[1])|is.na(sdOffspringSize[1])) {
-		if (length(dataf$offspringNext)==0) {
-			offspringData<-subset(dataf,is.na(dataf$stage)&dataf$stageNext=="continuous")
-		} else {
-			offspringData<-subset(dataf,dataf$offspringNext=="clonal"&dataf$stageNext=="continuous")
-		}
-		## relationship defining offspring size - note that the mean value is ALWAYS taken from
-		## a lm now (but equivalent to just fitting an intercept if that is desired....)
-		## [worth keeping sd separate from lm though (extracted from lm or not) because otherwise is a pain to adjust (as shown in growth model)]
-		f1@offspringRel <- lm(paste('sizeNext~',offspringSizeExplanatoryVariables,sep=''),data=offspringData)
-		f1@sdOffspringSize <- summary(f1@offspringRel)$sigma
-	} else {
-		f1@offspringRel <- lm(rep(meanOffspringSize[1],21)~1)
-		f1@sdOffspringSize <- sdOffspringSize
-	}
-	
-	if (sum(dim(offspringTypeRates)==c(1,1))<2) {
-		if ((sum(offspringTypeRates==0,na.rm=T)+sum(offspringTypeRates==1,na.rm=T))<(ncol(offspringTypeRates)*nrow(offspringTypeRates))) stop("Error - in offspringTypeRates data.frame only 0's and 1's are allowed: a 1 indicates that a fecundity rate applies to that offspring type. ")
-		if (sum(names(offspringTypeRates)==names(offspringSplitter))<length(offspringSplitter)) stop("Error - the offspring names in offspringTypeRates should match those in offspringSplitter - and in the same order, with continuous last")
-		if (sum(rownames(offspringTypeRates)==c(fecNames,names(fecConstants)))<(length(fecNames)+length(fecConstants))) stop ("Error - the row names in offspringTypeRates should consist of (in order) the names of the fec columns in the dataset and then the names of the fecConstants.")
-	} else {
-		offspringTypeRates <- as.data.frame(matrix(1,ncol=length(offspringSplitter),nrow=length(fecNames)+length(fecConstants)),row.names=c(fecNames,names(fecConstants)))
-		names(offspringTypeRates) <- names(offspringSplitter)
-	}
-
-	if (is.na(f1@sdOffspringSize)) 
-		print("Warning - could not estimate parameters for the distribution of offspring size; defaults must be supplied for meanOffspringSize and sdOffspringSize; you will not be able to construct an IPM without these values.")	
-	
-	
-	f1@fecNames <- fecNames
-	f1@fecConstants <- fecConstants
-	f1@offspringSplitter <- offspringSplitter 
-	f1@offspringTypeRates <- offspringTypeRates 
-	f1@fecByDiscrete <- fecByDiscrete
-	f1@Transform <- Transform
-	return(f1)
-}
-
-
-
-makeClonalObjManyCov <- function(dataf,
-		fecConstants=data.frame(NA),
-		explanatoryVariables="size",
-		Family="gaussian",
-		Transform="none",
-		fecNames=NA,
-		meanOffspringSize=NA,
-		sdOffspringSize=NA,
-		offspringSplitter=data.frame(continuous=1),
-		offspringTypeRates=data.frame(NA),
-		fecByDiscrete=data.frame(NA),
-		offspringSizeExplanatoryVariables="1"){
-	
-	
-	#if stage or stageNext do not exist in dataf, create them assuming that 
-	#everything is continuous. 
-	if (length(dataf$stage)==0) { 
-		dataf$stage <- rep("continuous",nrow(dataf))
-		dataf$stage[is.na(dataf$size)] <- NA
-		dataf$stage <- as.factor(dataf$stage)
-	}
-	if (length(dataf$stageNext)==0) {
-		dataf$stageNext <- rep("continuous",nrow(dataf))
-		dataf$stageNext[dataf$surv==0] <- "dead"
-		dataf$stageNext <- as.factor(dataf$stageNext)
-	}
-	
-	#order stage names from discrete to continuous
-	stages <- names(tapply(c(levels(dataf$stage),levels(dataf$stageNext)),c(levels(dataf$stage),levels(dataf$stageNext)),length))
-	stages <- stages[stages!="dead"] 
-	stages <- c(stages[stages!="continuous"],"continuous") 
-	if ((sum(names(offspringSplitter)%in%stages)/length(offspringSplitter))<1) {
-		stop("Error - the variable names in your offspringSplitter data.frame are not all part of the levels of stage or stageNext in your data file. Please fix this by adjusting your offspringSplitter entry to include the correct variable names, e.g. offspringSplitter=data.frame(continuous=.7,seedAge1=.3)")
-	}
-	dummy<-rep(0,length(stages));names(dummy)<-stages;dummy<-as.data.frame(t(as.matrix(dummy)))
-	for (i in names(offspringSplitter)) dummy[i]<-offspringSplitter[i]
-	offspringSplitter <- dummy
-	
-	##warnings
-	if (ncol(offspringSplitter)>1 & (ncol(offspringSplitter)-1)!=ncol(fecByDiscrete)) {
-		print("Warning - offspring splitter indicates more than just continuous stages. No fecundity by the discrete stages supplied in fecByDiscrete; assumed that is 0")
-		#fecByDiscrete <- matrix(0,col(offspringSplitter)-1,col(offspringSplitter)-1)
-		fecByDiscrete <- offspringSplitter[,1:(ncol(offspringSplitter)-1)]
-		fecByDiscrete[] <- 0
-	}
-	
-	if (sum(offspringSplitter)!=1) {
-		print("Warning - offspring splitter does not sum to 1. It is now rescaled to sum to 1.")
-		offspringSplitter <- offspringSplitter / sum(offspringSplitter) 
-	}
-	
-	if ("covariate"%in%strsplit(as.character(explanatoryVariables),"[+-\\*]")[[1]]&length(dataf$covariate)>0) { 
-		dataf$covariate <- as.factor(dataf$covariate)
-		levels(dataf$covariate) <- 1:length(unique(dataf$covariate))
+	fecNames <- rep(NA,length(Formula))
+	for (i in 1:length(Formula)) {
 		
-	}
-	if ("covariateNext"%in%strsplit(as.character(explanatoryVariables),"[+-\\*]")[[1]]&length(dataf$covariateNext)>0) { 
-		dataf$covariateNext <- as.factor(dataf$covariateNext)
-		levels(dataf$covariateNext) <- 1:length(unique(dataf$covariateNext))
-	}
-	#print(table(dataf$covariate))
-	
-	f1 <- new("fecObjMultiCov")
-	
-	dataf$size2 <- dataf$size^2
-	if (length(grep("logsize",as.character(explanatoryVariables)))>0) dataf$logsize <- log(dataf$size)
-	
-	if (is.na(fecNames[1])) fecNames <- names(dataf)[grep("clon",names(dataf))]
-	if (length(fecNames)>length(explanatoryVariables)) {
-		misE <- (length(explanatoryVariables)+1):length(fecNames)
-		print(c("number in explanatoryVariables not the same as the number of fecundity columns in the data file, using default of `size' for missing ones which are:",fecNames[misE],". (which might be exactly what you want)"))
-		explanatoryVariables <- c(explanatoryVariables,rep("size",length(fecNames)-length(explanatoryVariables)))
-	}
-	if (length(fecNames)>length(Family)) {
-		misE <- (length(Family)+1):length(fecNames)
-		print(c("number of families not the same as the number of fecundity columns in the data file, using default of `gaussian' for missing ones which are:",fecNames[misE],". (which might be exactly what you want)"))
-		Family <- c(Family,rep("gaussian",length(fecNames)-length(Family)))
-	}
-	if (length(fecNames)>length(Transform)) {
-		misE <- (length(Transform)+1):length(fecNames)
-		print(c("number of transforms not the same as the number of fecundity columns in the data file, using default of `none' for missing ones which are:",fecNames[misE],". (which might be exactly what you want)"))
-		Transform <- c(Transform,rep("none",length(fecNames)-length(Transform)))
-	}
-	
-	for (i in 1:length(fecNames)) {
+		fecNames[i] <- all.vars(Formula[[i]])[1]
+				
 		if (Transform[i]=="log") dataf[,fecNames[i]] <- log(dataf[,fecNames[i]])
 		if (Transform[i]=="sqrt") dataf[,fecNames[i]] <- sqrt(dataf[,fecNames[i]])
 		if (Transform[i]=="-1") dataf[,fecNames[i]] <- dataf[,fecNames[i]]-1
 		dataf[!is.finite(dataf[,fecNames[i]]),fecNames[i]] <- NA
-		f1@fitFec[[i]] <- glm(paste(fecNames[i],'~',explanatoryVariables[i],sep=''),family=Family[i],data=dataf)
+				
+		f1@fitFec[[i]] <- glm(Formula[[i]],family=Family[i],data=dataf)
 	}
 	
+	if (offspringSplitter$continuous>0) {
 	if (is.na(meanOffspringSize[1])|is.na(sdOffspringSize[1])) {
 		if (length(dataf$offspringNext)==0) {
 			offspringData<-subset(dataf,is.na(dataf$stage)&dataf$stageNext=="continuous")
+			if (nrow(offspringData) == 0) stop ("Error - no offspring size data are given: these can be given through either the meanOffspringSize and sdOffspringSize slots, or through individual data added to your data file (with stage equals NA, or a offspringNext column indicating 'clonal' offspring)")
 		} else {
 			offspringData<-subset(dataf,dataf$offspringNext=="clonal"&dataf$stageNext=="continuous")
+			if (nrow(offspringData) == 0) stop ("Error - no offspring size data are given: these can be given through either the meanOffspringSize and sdOffspringSize slots, or through individual data added to your data file (with stage equals NA, or a offspringNext column indicating 'clonal' offspring)")
 		}
 		## relationship defining offspring size - note that the mean value is ALWAYS taken from
 		## a lm now (but equivalent to just fitting an intercept if that is desired....)
@@ -916,7 +538,8 @@ makeClonalObjManyCov <- function(dataf,
 		f1@offspringRel <- lm(rep(meanOffspringSize[1],21)~1)
 		f1@sdOffspringSize <- sdOffspringSize
 	}
-	
+    }
+
 	if (sum(dim(offspringTypeRates)==c(1,1))<2) {
 		if ((sum(offspringTypeRates==0,na.rm=T)+sum(offspringTypeRates==1,na.rm=T))<(ncol(offspringTypeRates)*nrow(offspringTypeRates))) stop("Error - in offspringTypeRates data.frame only 0's and 1's are allowed: a 1 indicates that a fecundity rate applies to that offspring type. ")
 		if (sum(names(offspringTypeRates)==names(offspringSplitter))<length(offspringSplitter)) stop("Error - the offspring names in offspringTypeRates should match those in offspringSplitter - and in the same order, with continuous last")
@@ -925,11 +548,13 @@ makeClonalObjManyCov <- function(dataf,
 		offspringTypeRates <- as.data.frame(matrix(1,ncol=length(offspringSplitter),nrow=length(fecNames)+length(fecConstants)),row.names=c(fecNames,names(fecConstants)))
 		names(offspringTypeRates) <- names(offspringSplitter)
 	}
-	
-	if (is.na(f1@sdOffspringSize)) 
-		print("Warning - could not estimate parameters for the distribution of offspring size; defaults must be supplied for meanOffspringSize and sdOffspringSize; you will not be able to construct an IPM without these values.")	
-	
-	
+
+	if (length(f1@sdOffspringSize)>0) {
+		if (is.na(f1@sdOffspringSize)) {
+			print("Warning - could not estimate parameters for the distribution of offspring size; defaults must be supplied for meanOffspringSize and sdOffspringSize; you will not be able to construct an IPM without these values.")
+		}
+	}
+		
 	f1@fecNames <- fecNames
 	f1@fecConstants <- fecConstants
 	f1@offspringSplitter <- offspringSplitter 
@@ -938,6 +563,8 @@ makeClonalObjManyCov <- function(dataf,
 	f1@Transform <- Transform
 	return(f1)
 }
+
+
 
 
 # 4. Discrete Transition models  #######################################################################################################
@@ -956,6 +583,8 @@ makeDiscreteTrans <- function(dataf) {
 	stages <- names(tapply(c(levels(dataf$stage),levels(dataf$stageNext)),c(levels(dataf$stage),levels(dataf$stageNext)),length))
 	stages <- stages[stages!="dead"] 
 	stages <- c(stages[stages!="continuous"],"continuous") 
+	#if no number of instances are not specified, assume each row represents one individual
+	if (("number"%in%names(dataf)) == FALSE) dataf$number <- 1
 	#define the number of classes
 	nclasses <- length(stages)
 	#define matrices to hold the transition between all classes

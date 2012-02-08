@@ -9,8 +9,8 @@
   object are defined.
 }
 \usage{
-makeGrowthObj(dataf, explanatoryVariables="size", 
-	responseType="sizeNext",regType="constantVar")
+makeGrowthObj(dataf, Formula = sizeNext ~ size, 
+	regType = "constantVar", Family = "gaussian")
 }
 %- maybe also 'usage' for other objects documented here.
 \arguments{
@@ -21,20 +21,19 @@ makeGrowthObj(dataf, explanatoryVariables="size",
     and at t+1, respectively; these must take values of sequential integers, starting at
     `1'. For models fitting growth increment, 'incr' or 'logincr' may be directly provided as
     a column in the dataframe, otherwise they are calculated as
-    dataf$sizeNext-dataf$size or log(dataf$sizeNext-dataf$size),
+    dataf$sizeNext - dataf$size or log(dataf$sizeNext - dataf$size),
   respectively. }
-  \item{explanatoryVariables}{a formula describing the desired
+  \item{Formula}{a formula describing the desired
     explanatory variables (interactions, etc) according to the R notation for \code{formula}.
-    style, i.e. separated by `+', `*', `:'. Possible covariates include `size', 'size2' (size^2), `size3'
+    style, i.e. separated by `+', `*', `:' and response variable. Possible covariates include `size', 'size2' (size^2), `size3'
     (size^3),`logsize' (log(size)), `logsize2' (log(size)^2), and
-    `covariate'.}
-  \item{responseType}{possible values include `sizeNext' (size in one
-    discrete time step) and `incr' and `logincr'}
+    `covariate' (if this name is used, the assumption is made that this is a discrete covariate from which compound matrices may be constructed); or any other covariate available in dataf.}
   \item{regType}{possible values include `constantVar' or `declineVar'}
+  \item{Family}{possible values include `gaussian' or `poisson'}
   
   }
 \value{
-An object of class growthObj, or growthObjIncr, or growthObjLogIncr;
+An object of class growthObj, or growthObjPois, growthObjIncr, or growthObjLogIncr;
 or growthObjDeclineVar, or growthObjIncrDeclineVar, or growthObjLogIncrDeclineVar. 
 These are S4 objects which contain the slots: 
    \item{fit}{an object of class \code{lm} or \code{glm} or \code{gls} that can be used with predict in the survival methods}
@@ -51,23 +50,21 @@ See manual for details on building case-specific growth objects; which may conta
 %% ~Make other sections like Warning with \section{Warning }{....} ~
 
 \seealso{
-\code{\link{makeGrowthObjManyCov}}, \code{\link{makeSurvObj}}, \code{\link{makeFecObj}}
+ \code{\link{makeSurvObj}}, \code{\link{makeFecObj}}
 }
 \examples{
 #generate data
 dff <- generateData()
 #make simple linear regression growth object relating size to size at t+1
-(gr1 <- makeGrowthObj(dataf=dff, explanatoryVariables="size", 
-	responseType="sizeNext"))
+(gr1 <- makeGrowthObj(dataf = dff, Formula = sizeNext~size))
 #same but relating size to incr
-(gr1 <- makeGrowthObj(dataf=dff, explanatoryVariables="size", 
-	responseType="incr"))
+(gr1 <- makeGrowthObj(dataf = dff, Formula = incr ~ size))
 #same but relating size to incr and discrete covariate
-(gr1 <- makeGrowthObj(dataf=dff, explanatoryVariables="size+covariate", 
-	responseType="incr",regType="declineVar"))
+(gr1 <- makeGrowthObj(dataf = dff, Formula = incr ~ size + covariate, 
+	regType = "declineVar"))
 #with declining increment
-(gr1 <- makeGrowthObj(dataf=dff, explanatoryVariables="size+covariate", 
-	responseType="incr",regType="declineVar"))
+(gr1 <- makeGrowthObj(dataf = dff, Formula = incr ~ size + covariate, 
+	regType = "declineVar"))
 
 #assess fit 
 picGrow(dff,gr1)

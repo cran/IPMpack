@@ -11,7 +11,7 @@ Function plots compared models built with \code{growthModelComp} and \code{survM
 }
 \usage{
 plotGrowthModelComp(grObj,summaryTable, dataf, expVars, 
-respType = "sizeNext", testType = "AIC", 
+testType = "AIC", 
 plotLegend = TRUE, mainTitle = "", legendPos = "topright",...)
 
 plotSurvModelComp(svObj, summaryTable, dataf, expVars, testType = "AIC",  plotLegend = TRUE, mainTitle = "",ncuts=20, 
@@ -33,9 +33,6 @@ legendPos = "bottomleft",...)
   }
   \item{expVars}{
     vector, list of covariates.  Defaults to \code{c("1",  "size", "size + size2")}.
-  }
-   \item{respType}{
-    character string identifying the response variable for the growthModelComp.  wither \code{"sizeNext"}, \code{"logincr"} or \code{"incr"}. Defaults to \code{sizeNext}. 
   }
   \item{testType}{
     character string identifying the metric used to compare models.  Can be any string that uses \code{loglike} from the lm or glm object.  For example \code{"AIC"} or \code{"BIC"}.  Defaults to \code{"AIC"}.
@@ -76,9 +73,11 @@ C. Jessica E. Metcalf, Sean M. McMahon, Roberto Salguero-Gomez & Eelke Jongejans
 dff <- generateData()
 
 grModels <- growthModelComp(dff, makePlot = FALSE)
-plotGrowthModelComp(grObj = grModels$growthObjects, 
-summaryTable = grModels$summaryTable, dataf = dff, 
-respType = "sizeNext", expVars = as.character(grModels$summaryTable[,1]))
+
+##TODO - NEEDS PROPER FORMULAS FOR LAST ARGUMENT
+#plotGrowthModelComp(grObj = grModels$growthObjects, 
+#summaryTable = grModels$summaryTable, dataf = dff, 
+# expVars = as.character(grModels$summaryTable[,1]))
 
 
 }

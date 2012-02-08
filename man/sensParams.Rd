@@ -6,7 +6,7 @@
 }
 \description{
   Uses perturbation to estimate the sensitivity and elasticity of
-  all the parameters underlying an IPM that is structured only by continuous (e.g. size) stage (compound T and F matrices not possible yet). If discrete stages are present, the sensitivity analysis can be run, but parameters linked to transmission to discrete stages will not be addressed. 
+  all the parameters underlying an IPM  (compound T and F matrices not possible yet). If discrete stages are present, the sensitivity analysis can be run, but parameters linked to movement into and out of discrete stages will not be addressed. 
 }
 \usage{
 sensParams(growObj, survObj, fecObj, nBigMatrix, minSize, maxSize, 
@@ -82,7 +82,8 @@ las = 2, cex.names = 0.5)
 
 # Same but with two fecundity functions
 dff$fec2 <- dff$fec>0 #create binomial describing e.g., prob of flowering
-fv1 <- makeFecObj(dff, explanatoryVariables = c("size+size2","size"), Transform=c("log","none"),
+dff$fec[dff$fec==0] <- NA #take out zeros to avoid infinity when fit on a log scale
+fv1 <- makeFecObj(dff, Formula = c(fec~size+size2,fec2~size), Transform=c("log","none"),
 Family = c("gaussian","binomial"))
 
 res <- sensParams(growObj=makeGrowthObj(dff), survObj = makeSurvObj(dff), 
