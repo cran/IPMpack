@@ -61,8 +61,10 @@ getIPMoutput <- function(PmatrixList,targetSize=c(),FmatrixList=NULL){
 getIPMoutputDirect <- function(survObjList,growObjList,targetSize=c(),
 		nBigMatrix,minSize,maxSize,discreteTrans = 1,
 		cov=FALSE,fecObjList=NULL, envMat=NULL,
-		nsizeToAge=0, sizeStart=10,
-		integrateType="midpoint", correction="none", storePar=TRUE){
+		nsizeToAge=0, sizeStart = 10,
+		integrateType = "midpoint", correction = "none", storePar=TRUE,
+		chosenCov = data.frame(covariate = 1),
+		onlyLowerTriGrowth=FALSE){
 	
 	# adjust the sample lengths to they are all the same
 	if (length(targetSize)==0)  targetSize <- 0.2*(minSize+maxSize)
@@ -110,13 +112,23 @@ getIPMoutputDirect <- function(survObjList,growObjList,targetSize=c(),
 			
 		} else {
 			Pmatrix <- createCompoundPmatrix(nEnvClass = nEnv,
-					nBigMatrix = nBigMatrix, minSize = minSize, 
+					nBigMatrix = nBigMatrix, minSize = minSize,
 					maxSize = maxSize, envMatrix=envMat,growObj = growObjList[[k]],
 					survObj = survObjList[[k]],discreteTrans=discreteTrans,
 					integrateType=integrateType, correction=correction)    
 			
 		}
 		
+		if (onlyLowerTriGrowth & !cov) {
+			Pmatrix@.Data <- Pmatrix@.Data*lower.tri(Pmatrix@.Data, diag = TRUE)
+			nvals <- colSums(Pmatrix@.Data,na.rm=TRUE)
+			Pmatrix@.Data <- t((t(Pmatrix@.Data)/nvals) *
+							surv(size = Pmatrix@meshpoints, 
+									cov = chosenCov,
+									survObj = survObjList[[k]]))                                    
+		}
+		
+	
 		LE[k,] <- meanLifeExpect(Pmatrix) 
 		pTime[k,] <- passageTime(targetSize,Pmatrix) 
 		if (k==1) h1 <- diff(Pmatrix@meshpoints)[1]
@@ -205,17 +217,17 @@ sizeToAge <- function(Pmatrix,startingSize,targetSize) {
 #            - ncuts - the number of cuts used for binning survival
 # returns - 
 
-picSurv <- function(dataf,survObj,ncuts=20,...) { 
+picSurv <- function(dataf, survObj, ncuts = 20, makeTitle = "Survival", ...) { 
 	
 	#organize data and plot mean of ncut successive sizes, so trend more obvious
 	os<-order(dataf$size); os.surv<-(dataf$surv)[os]; os.size<-(dataf$size)[os]; 
 	psz<-tapply(os.size,as.numeric(cut(os.size,ncuts)),mean,na.rm=TRUE); #print(psz)
-	ps<-tapply(os.surv,as.numeric(cut(os.size,ncuts)),mean,na.rm=TRUE);#print(ps)
+	ps<-tapply(os.surv,as.numeric(cut(os.size,ncuts)), mean, na.rm = TRUE);#print(ps)
 	
 	if (length(grep("covariate",names(survObj@fit$model)))==0) {  
 		#plot data
 		plot(as.numeric(psz),as.numeric(ps),pch=19,
-				xlab="Size at t", ylab="Survival to t+1",main="Survival",...)
+				xlab="Size at t", ylab = "Survival to t+1", main = makeTitle, ...)
 		#Plot fitted models
 		points(dataf$size[order(dataf$size)],surv(dataf$size[order(dataf$size)],data.frame(covariate=1),survObj),type="l",col=2)
 	} else {
@@ -228,11 +240,13 @@ picSurv <- function(dataf,survObj,ncuts=20,...) {
 		ud <- unique(dataf$covariate); ud <- ud[!is.na(ud)]
 		for (k in 1:length(ud)) { 
 			tp <- os.cov==ud[k]
-			psz<-tapply(os.size[tp],as.numeric(cut(os.size[tp],ncuts)),mean,na.rm=TRUE); #print(psz)
+			psz<-tapply(os.size[tp], as.numeric(cut(os.size[tp], ncuts)), mean, na.rm = TRUE); #print(psz)
 			ps<-tapply(os.surv[tp],as.numeric(cut(os.size[tp],ncuts)),mean,na.rm=TRUE);#print(ps)
 			points(as.numeric(psz),as.numeric(ps),pch=19,col=k)
 			newd <- data.frame(size=sizes,size2=sizes^2,size3=sizes^3,
 					covariate=rep(as.factor(ud[k]),length(sizes)))
+			if(length(grep("expsize",survObj@fit$formula))==1)
+				newd$expsize=exp(sizes)
 			if(length(grep("logsize",survObj@fit$formula))==1)
 				newd$logsize=log(sizes)
 			if(length(grep("logsize2",survObj@fit$formula))==1)
@@ -284,19 +298,31 @@ wrapHossfeld <- function(par, dataf) {
 # returns - 
 #
 
-picGrow <- function(dataf,growObj) {
+picGrow <- function(dataf, growObj, mainTitle = "Growth",...) {
+	predVar <- attr(growObj@fit$terms,"predvars")[[2]]  #jess quick fix. this function does not work with declineVar either at the moment
+	if (class(growObj)=="growthObjTruncIncr") { 
+		predVar <- "incr"	
+	} else {
+		predVar <- attr(growObj@fit$terms,"predvars")[[2]]
+	}
+		
+	if(predVar == "sizeNext") {
+		plot(dataf$size, dataf$sizeNext,pch=19, xlab="Size at t", ylab="Size at t+1", main = mainTitle,...)
+		abline(a = 0, b = 1)
+	}else{
+		dataf$incr <- dataf$sizeNext - dataf$size
+		plot(dataf$size, dataf$incr, pch = 19, xlab = "Size at t", ylab="Size increment", main = mainTitle,...)
+		abline(a = 0, b = 0)
+	}
 	
-	
-	plot(dataf$size,dataf$sizeNext,pch=19,xlab="Size at t", ylab="Size at t+1",main="Growth")
-	
-	if (length(grep("covariate",names(growObj@fit$model)))>0) {  
+	if (length(grep("covariate", names(growObj@fit$model))) > 0) {  
 		#convert to 1:n for indexing later and to relate to discrete
 		dataf$covariate <- as.factor(dataf$covariate)
 		levels(dataf$covariate) <- 1:length(unique(dataf$covariate))
 		ud <- unique(dataf$covariate); ud <- ud[!is.na(ud)]
 		for (k in 1:length(ud)) { 
-			tp <- dataf$covariate==ud[k]
-			points(dataf$size[tp], dataf$sizeNext[tp],pch=19,col=k)            
+			tp <- dataf$covariate == ud[k]
+			points(dataf$size[tp], dataf$sizeNext[tp], pch = 19, col = k)            
 		}
 		ud <- as.factor(ud)
 	} else {
@@ -306,29 +332,31 @@ picGrow <- function(dataf,growObj) {
 	sizes <- dataf$size[!is.na(dataf$size)]; sizes <- sizes[order(sizes)]
 	
 	for (k in 1:length(ud)) { 
-		newd <- data.frame(size=sizes,size2=sizes^2,size3=sizes^3,
-				covariate=as.factor(rep(ud[k],length(sizes))))
+		newd <- data.frame(size = sizes, size2 = sizes ^ 2,size3 = sizes ^ 3,
+				covariate = as.factor(rep(ud[k],length(sizes))))
 					
-		if(length(grep("logsize",names(growObj@fit$coefficients)))==1)
-			newd$logsize=log(sizes)
-		if(length(grep("logsize2",names(growObj@fit$coefficients)))==1)
+		if(length(grep("expsize", names(growObj@fit$coefficients))) == 1)
+			newd$expsize = exp(sizes)
+		if(length(grep("logsize", names(growObj@fit$coefficients))) == 1)
+			newd$logsize = log(sizes)
+		if(length(grep("logsize2", names(growObj@fit$coefficients))) == 1)
 			newd$logsize=(log(sizes))^2
 		
 		
 		if (length(grep("decline",tolower(as.character(class(growObj)))))>0 | 
 				length(grep("trunc",tolower(as.character(class(growObj)))))>0) { 
-				pred.size <- .predictMuX(growObj,newd,covPred=k)
+				pred.size <- .predictMuX(growObj, newd, covPred = k)
 			} else  {
-				pred.size <- predict(growObj@fit,newd,type="response")	
+				pred.size <- predict(growObj@fit,newd,type = "response")	
 			}
-		if (length(grep("incr",tolower(as.character(class(growObj)))))==0) {
-			points(sizes,pred.size,type="l",col=k)	
+		if (length(grep("incr", tolower(as.character(class(growObj))))) == 0) {
+			points(sizes, pred.size, type = "l", col = k + 1)	
 		} else { 
-			if (length(grep("logincr",tolower(as.character(class(growObj)))))>0) {
-				points(sizes,sizes+exp(pred.size),type="l",col=k)	} else { 
-				points(sizes,sizes+pred.size,type="l",col=k)	
+			if (length(grep("logincr", tolower(as.character(class(growObj))))) > 0) {
+				points(sizes, sizes + exp(pred.size), type = "l", col = k + 1)		
+			} else { 
+				lines(sizes, pred.size, col = k + 1)	
 			}
-				
 		}
 	}
 }
@@ -338,12 +366,12 @@ picGrow <- function(dataf,growObj) {
 
 makeEnvObj <- function(dataf){
 	#turn into index starting at 1
-	minval <-  min(c(dataf$covariate,dataf$covariateNext))
+	minval <-  min(c(dataf$covariate,dataf$covariateNext),na.rm=TRUE)
 	startEnv <- dataf$covariate-minval+1
 	nextEnv <- dataf$covariateNext-minval+1
 	
 	
-	nEnvClass <- max(c(startEnv,nextEnv))
+	nEnvClass <- max(c(startEnv,nextEnv), na.rm=TRUE)
 	desired.mat <- matrix(0,nEnvClass,nEnvClass) 
 	mats<-table(startEnv,nextEnv)
 	rx <- as.numeric(rownames(mats));#print(rx)
@@ -917,6 +945,9 @@ createMPMFmatrix <- function(dataf, bins,offspringClasses=1, offspringProp=1, nE
 		if(expVar[i] == "size3"){
 			covDf$size3 <- sizeSorted ^ 3
 		}
+		if(expVar[i] == "expsize") {
+			covDf$expsize <- exp(sizeSorted)
+		}
 		if(expVar[i] == "logsize") {
 			covDf$logsize <- log(sizeSorted)
 		}
@@ -1117,6 +1148,31 @@ getListRegObjects <- function(Obj,nsamp=1000) {
 	
 	return(objList)
 }
+
+
+
+## Function to take fit of these and output a list of growth objects
+getListRegObjectsFec <- function(Obj,nsamp=1000) {
+	
+	require(mvtnorm)
+	require(MASS)
+
+	objList <- list()
+	
+	#generate new set parameters from mvn
+	for (j in 1:nsamp) {
+		for (k in 1:length(Obj@fitFec)) { 
+		npar <- length(Obj@fitFec[[k]]$coefficients)
+		newpar <- rmvnorm(nsamp, mean = Obj@fitFec[[k]]$coefficients, 
+					sigma = vcov(Obj@fitFec[[k]]))
+		objList[[j]] <- Obj
+		objList[[j]]@fitFec[[k]]$coefficients <- newpar[j,]
+		}
+	}	
+		
+	return(objList)
+}
+
 
 
 ## Function to coerce Growth object to parameters and variance desired

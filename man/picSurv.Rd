@@ -8,7 +8,7 @@ Makes pictures of survival.
 Produces figures of value for assessing survival fit given data.
 }
 \usage{
-picSurv(dataf, survObj, ncuts = 20, ...)
+picSurv(dataf, survObj, ncuts = 20, makeTitle = "Survival", ...)
 }
 %- maybe also 'usage' for other objects documented here.
 \arguments{
@@ -19,6 +19,9 @@ an object of class survObj.
 }
   \item{ncuts}{
 number of consecutive values for which means of survival and continuous (e.g. size) stage are taken for the plotting.
+}
+  \item{makeTitle}{
+character that defines title, defaults to "Survival"
 }
   \item{\dots}{
 extra arguments to plot (e.g, ylim, etc).

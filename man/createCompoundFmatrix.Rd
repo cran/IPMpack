@@ -5,7 +5,7 @@
 Builds a compound F matrix.
 }
 \description{
-  Uses fecundity object, and environmental transition objects to construct a matrix defining probabilities for transitions between sizes due to fecundity given both a continuous state (e.g. size) and environmental state, as well as a discrete stage if necessary (e.g. seedbank). Currently only pre-census fertility can be handled.  
+  Uses fecundity object, and environmental transition objects to construct a matrix defining probabilities for transitions between sizes due to fecundity given both a continuous state (e.g. size) and environmental state, as well as a discrete stage if necessary (e.g. seedbank).  
 }
 \usage{
 createCompoundFmatrix(nEnvClass = 2, nBigMatrix = 50,
@@ -39,10 +39,7 @@ preCensus = TRUE, survObj = NULL, growObj = NULL)
     function); other option is "cumul" (which uses the cumulative density function).
   }
   \item{correction}{
-    correction type, defaults to "none"; option is "constant" which will
-    multiply every column of the IPM by a constant sufficient to adjust
-    values to those predicted for survival at that size. 
-  }
+ correction type, defaults to \code{none}. The first option is \code{constant} which will multiply every column of the IPM by a constant sufficient to adjust values to those predicted for total fertility at that size. The second option is \code{discretizeExtremes} which will place all transitions to sizes smaller than \code{minSize} into the smallest bin, and transitions to sizes larger than \code{maxSize} into the largest bin.    }
   \item{preCensus}{
     logical (TRUE or FALSE), indicating whether the fecundity object should
     represent an interval between pre-breeding or a post-breeding censusses.

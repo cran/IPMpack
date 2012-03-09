@@ -23,7 +23,8 @@
  
 \begin{document}
 
-\title{IPMpack: an R package for demographic modeling with Integral Projection Models (v.1.2)}
+\title{IPMpack: an R package for demographic modeling with Integral Projection
+Models (v.1.5)}
 \author{Jessica Metcalf, Sean M. McMahon, Rob Salguero-Gomez, Eelke Jongejans}
 \maketitle
 
@@ -32,14 +33,14 @@
 %\makeabstract
 The goal of IPMpack is to provide a suite of demographic tools based
 on Integral Projection Models (IPMs) to support biologists interested in
-making projections for populations where demography is strongly linked to a continuous variable, such as size. The package includes functions that can take data, such as size or age, as well as environmental covariates, and build models of growth, survival and fecundity. Functions are defined that then take these
+making projections for populations where demography is strongly linked to a changing continuous variable, such as size. The package includes functions that can take data, such as size or age, as well as environmental covariates, and build models of growth, survival and fecundity. Functions are defined that then take these
 statistical models and construct IPMs. IPMpack has tools that compare different
 functional forms for the underlying statistical models, plotting them and
 returning model scores, as well as tools for diagnostic tests of the IPM models
 themselves. There are also methods to build population models for varying environments, use Bayesian methods to sample population parameters,  estimate longevity and passage time, sensitivity and elasticity (of either parameters or matrix elements), and much more.
 
 This vignette is intended to introduce the concepts of IPMs as well as the
-implementation of IPMpack to biologists with a wide range of quantitative skills.  This vignette is for IPMpack version $1.3$, and so we encourage users to contact the IPMpack team at \href{IPMpack@gmail.com}{IPMpack@gmail.com} with any feedback or mistakes they find.  We also host a blog at R-forge (http://ipmpack.r-forge.r-project.org/) that contains news of updates, new features, and announcements of papers and meetings relevant to IPMs.
+implementation of IPMpack to biologists with a wide range of quantitative skills.  This vignette is for IPMpack version $1.5$, and so we encourage users to contact the IPMpack team at \href{IPMpack@gmail.com}{IPMpack@gmail.com} with any feedback or mistakes they find.  We also host a blog at R-forge (http://ipmpack.r-forge.r-project.org/) that contains news of updates, new features, and announcements of papers and meetings relevant to IPMs.
  
 \newpage
 
@@ -71,13 +72,13 @@ plants, basidia in fungi), number of propagules within reproductive structure
 From equation 1: 
 \begin{equation}
 n(y, t+1) = \int\limits_{L}^{U} K(y, x) n(x, t) dx = \int\limits_{L}^{U}
-[T(y, ) + F(y, x)] n(x, t) dx ,
+[P(y, ) + F(y, x)] n(x, t) dx ,
 \end{equation}
 
 where
 
 \begin{equation}
- \int\limits_{L}^{U} T(y, x) n(x, t) dx = \int\limits_{L}^{U}surv(x)growth(y, x)dx ,    
+ \int\limits_{L}^{U} P(y, x) n(x, t) dx = \int\limits_{L}^{U}surv(x)growth(y, x)dx ,    
 \end{equation}
 and
 \begin{equation}
@@ -99,14 +100,14 @@ cycle of the study species) must be defined {\tt a priori}, IPMs
 impose the discretization of the three-dimensional surface defined by
 equation 1 in the last step for the purposes of numerical integration. This produces a typically large matrix (e.g., $100$ x $100$ cells) that is more robust to biases from matrix dimensionality (Zuidema et al. $2010$, Salguero-Gomez \& Plotkin $2010$) and sample size (Ramula et al. $2009$) than classical matrix models.
 
-The goal of IPMpack is to provide a centralized set of quantitative techniques based on IPMs to help ecologists and evolutionary biologists model populations. IPMpack can accommodate multiple vital rates from complex life cycles all grouped into two main sub-kernels: $T$ and $F$ (equation 2) \footnote{Note than in the seminal paper by Easterling et al. ($2000$) this kernel was referred to as $P$, but here we follow the terminology by Caswell ($2001$) and call it $T$ instead). The $T$ kernel (equation 3) describes {\tt growth} between demographic censuses conditional on individuals' survival ({\tt surv}).
+The goal of IPMpack is to provide a centralized set of quantitative techniques based on IPMs to help ecologists and evolutionary biologists model populations. IPMpack can accommodate multiple vital rates from complex life cycles all grouped into two main sub-kernels: $P$ and $F$ (equation 2) \footnote{Note than in the seminal paper by Easterling et al. ($2000$) this kernel was referred to as $P$, but here we follow the terminology by Caswell ($2001$) and call it $P$ instead). The $P$ kernel (equation 3) describes {\tt growth} between demographic censuses conditional on individuals' survival ({\tt surv}).
 }.
 
 This vignette walks through the steps of a basic IPM analysis.  We first
 describe the kind of data necessary to build an IPM.  If a user begins `from
 scratch', they must input data in a specific format (described below).  However
 it is possible to jump past this step and use IPMpack capabilities on IPMs that
-were developed outside of IPMpack. That is, if a user wants quick figures, summary statistics, other analyses on an IPM matrix already built, IPMpack can readily accommodate that.   However there are some features that, because of the object-oriented coding require some specific structures (and other features that do not).  Please refer to the manual files, and the rest of this vignette for this information. The vignette will begin with data input.  We will then walk through how to build and analyse a basic IPM model.  More complex models will be introduced later, as well as run comparative model testing and Bayesian implementations.
+were developed outside of IPMpack. That is, if a user wants quick figures, summary statistics, other analyses on an IPM matrix already built, IPMpack can readily accommodate that.   However there are some features that, because of the object-oriented coding, require some specific structures (and other features that do not).  Please refer to the manual files, and the rest of this vignette for this information. The vignette will begin with data input.  We will then walk through how to build and analyse a basic IPM model.  More complex models will be introduced later, as well as run comparative model testing and Bayesian implementations.
 
 \section{Getting started: setting up the data for IPMpack}
 For users who prefer to define IPM matrices using their own
@@ -135,7 +136,7 @@ $t$ with the following potential column names:
 simples case, ``continuous'' or ``dead''(which is redundant with ``0''
 in the {\tt surv} column. As above, this column is not essential
 for many procedures in  IPMpack. For running {\tt makeFecObj}, the column must be a factor. If not supplied, the function will generate this column assuming all individuals that are alive are ``continuous".
-\item  {\tt number}: number of individuals corresponding to each row in the data frame. For all rows corresponding to movement between continuous stages, this value will be $1$, but for movement between  discrete stages (e.g., from ``dormant seeds'' to ``seeds ready to  germinate'') then this number may be $>1$, potentially directly  reflecting observed individuals in the data. This information avoids having a data frame with a row for every discrete stage (e.g. seed). As above, many  proceedures in IPMpack will simply assume that this value is always 1. 
+\item  {\tt number}: number of individuals corresponding to each row in the data frame. For all rows corresponding to movement between continuous stages, this value will be $1$, but for movement between  discrete stages (e.g., from ``dormant seeds'' to ``seeds ready to  germinate'') then this number may be $>1$, potentially directly  reflecting observed individuals in the data. This information avoids having a data frame with a row for every discrete stage (e.g. seed). As above, many  procedures in IPMpack will simply assume that this value is always 1. 
 \item  {\tt covariate}: value of a discrete covariate in census time  $t$, such as light environment at time $t$, age at $t$, patch at $t$, etc. 
 \item  {\tt covariateNext}: value of a discrete covariate in census time $t+1$.
 \item  ...any other covariates of interest, named as desired by the user are possible too (e.g., precipitation, habitat, temperature, etc).
@@ -145,7 +146,7 @@ size of an offspring, this column will contain either the value ``sexual" or
 considered). If this column exists, rows that take these two values will be excluded from the growth analyses (functions {\tt makeGrowthObj} and variants thereof, see below).
 \end{itemize}
 
-The $^*$ symbol above indicates the minimum columns in the data frame required to obtain passage time and life expectancy calculations. These values form the $T$ kernel. If sufficient additional columns are available, a full life-cycle model, containing the $F$ kernel, can be produced and further analyses are possible.  Although {\tt size} and {\tt sizeNext} can be transformed, many of the utility functions assume no transformations in columns in the original data frame pertaining to fertility. Transformations can be formally called in various parts of the package and appropriate $F$ matrices built that account for these transformations. 
+The $^*$ symbol above indicates the minimum columns in the data frame required to obtain passage time and life expectancy calculations. These values form the $P$ kernel. If sufficient additional columns are available, a full life-cycle model, containing the $F$ kernel, can be produced and further analyses are possible.  Although {\tt size} and {\tt sizeNext} can be transformed, many of the utility functions assume no transformations in columns in the original data frame pertaining to fertility. Transformations can be formally called in various parts of the package and appropriate $F$ matrices built that account for these transformations. 
 
 \section{The basics: building an IPM}
 
@@ -154,7 +155,7 @@ First, the user must install IPMpack from CRAN using
 ({\tt library(IPMpack)}) (see help files for problems with installation or loading). 
 
 <<>>=
-library("IPMpack")
+library(IPMpack)
 @
 Next, the user must input demographic data. As mentioned above, most functions of IPMpack require a data file with at minimum columns called {\tt size}, {\tt sizeNext}, {\tt surv}, where `size' is size at time t, `sizeNext' is size one census later, and `surv' is a series of 0s and 1s, indicating if the individual survived or not. In the case of `size' and `sizeNext', data can be transformed (e.g., onto a log scale), if appropriate via functions built into IPMpack. For the purpose of learning how to use IPMpack, the user can either use his/her own data (adjusted to have the appropriate headings, as aforementioned), or generate them with a function built into IPMpack:
 
@@ -203,11 +204,11 @@ sv1 <- makeSurvObj(dff, Formula = surv~size+size2)
 @ 
 In both these functions, the argument {\tt Formula} contains formulas of the type used in linear or logistic regressions in $R$, built around the possible defined range of transforms of  {\tt size} currently available ({\tt size2} which is size$^2$, {\tt size3} which is size$^3$, and {\tt logsize} which is log(size). Currently further transforms of  {\tt size} are not possible. This function can also be used to fit models that include a single discrete covariate (e.g., light environment, age, etc) as long as this exists in the {\tt dataf} in a column named {\tt covariate}. For instance, the user could model the population dynamics according to  {\tt size + covariate} or  {\tt size + logsize*covariate}, etc. For more complex analyses, other covariates (time since fire, precipitation, etc) can be fitted as long as they exist within {\tt dataf}. For the growth model, possibilities for the response variable in the {\tt Formula} are: {\tt sizeNext} meaning that the reponse variable is size at the next census time, or {\tt incr} meaning that the response variable is the size increment that has accrued between the two census times (common among tree demographic studies), and {\tt logincr} meaning that the response variable is the log of the size increment that has acrrued between the two census intervals.
 
-Glancing at the source code will confirm that all these functions simply fit a linear regression relating size at t+1 or increment to size at t and covariates for growth, as for survival. The survival and growth objects created have a slot called `fit' that holds the regression and a slot sd that holds the variance around the regression.
+Glancing at the source code will confirm that all these functions simply fit a linear regression relating size at t+1 or increment to size at t and covariates for growth, as for survival. The survival and growth objects created have a slot called `fit' that holds the regression and a slot sd that holds the variance around the regression. 
 <<>>= 
 gr1
 @ 
-IPMpack contains two functions that allow the user to check these two relationships against the data used for them in order to explore goodness of fit and effect of mesh size, shown in Figure~\ref{fig:one} (p.~\pageref{fig:one}).
+Note that before building growth or survival objects in IPMpack, careful model assessement and comparison are recommended, using all the usual regression tools available in R (plotting the fitted {\tt lm} or {\tt glm} to check for patterns of residuals, outliers etc). IPMpack also contains two functions that allow the user to check these two relationships against the data used for them in order to explore goodness of fit and effect of mesh size, shown in Figure~\ref{fig:one} (p.~\pageref{fig:one}).
 <<label = fig1, include = FALSE>>= 
 par(mfrow = c(1, 2), bty = "l", pty = "m")
 p1 <- picGrow(dff, gr1)
@@ -229,7 +230,7 @@ Pmatrix <- createIPMPmatrix(nBigMatrix = 50,
                             growObj = gr1, survObj = sv1, 
                             correction = "constant")
 @ 
-where {\tt nBigMatrix} is the number of bins used, {\tt minSize} and
+where {\tt nBigMatrix} is the numbers of bins used, {\tt minSize} and
 {\tt maxSize} define the limits of the IPM, $U$ and $L$ in the
 equations above. Typically, these ranges should usually extend to beyond the
 smallest and largest size measurement, but the user might want to exclude
@@ -238,18 +239,18 @@ and survival as defined above.
 
 \begin{figure}
 \begin{center}
-<<label = fig:diag, fig = TRUE, echo = FALSE>>= 
+<<label = triDiag, fig = TRUE, echo = FALSE>>= 
 diagnosticsPmatrix(Pmatrix, gr1, sv1, dff,correction = "constant")
 @
 \end{center}
 \caption{Diagnostic plots for the Pmatrix.}
-\label{fig:diag}
+\label{fig:triDiag}
 \end{figure}
 
 IPMpack includes a useful function {\tt diagnosticsPmatrix} that provides a
 series of plots indicative of whether bin choice and size range is adequate.
 Applying this function as a preliminary step before obtaining demographic and evolutionary output from IPMs can help identify basic problems in the fitting of vital rate functions or in the creation of the IPM matrices before proceeding. Several common problems can be diagnosed with the panelled figure produced by {\tt diagnosticsPmatrix} (Figure
-\ref{fig:diag}).
+\ref{fig:triDiag}).
 
 The left panel on the first plot shows the range of the data (if the data is provided) and the range of the state variable fitted in the matrix (top line, black).  If these are mis-matched, the limits of the data used in building the Pmatrix can be adjusted with the {\tt minSize} and {\tt maxSize} arguments in {\tt createIPMPmatrix}.  The range for two additional Pmatrices that will be used in subsequent comparisons is also provided; one with an increased size range (red) and one with an increased number of bins (blue). 
 
@@ -257,7 +258,7 @@ The discretization of a continuous function can result in under- or over-estimat
 plots these against each other for the three matrices in the first panel (current, extended range and increased bin number) using the same colours as in the first panel. Lines should fall along the (0,1) line shown in grey; if they do not, the argument {\tt correction="constant"} in {\tt createIPMPmatrix} may be of use. This ensures that the columns sum to the fitted survival by multiplying every column in the Integral Projection Model by the value that allows this. The third panel checks whether extending the size range included in the matrix and increasing the number of bins (by increasing {\tt nBigMatrix} and thereby having narrower bins) does not alter basic predictions from the IPM.
 
 The six panels on the next plot (that may not be present in the pdf of the vignette, but should appear if you run the function) show the discretized IPM (histograms)for the current IPM (top) and one with an increased number of bins (bottom)  and the
-theoretical density function (red line) . These are plotted either for three chosen sizes ({\tt sizesToPlot}) or the 0.25, 0.5 and 0.75 quantiles of either the observed data (if supplied) or the range of meshpoints (if not); this size is printed in the top right hand of every plot. If the theoretical density function curve is very distant from the histograms, increasing the {\tt nBigMatrix} argument may correct this discrepancy. 
+theoretical density function (red line). These are plotted either for three chosen sizes ({\tt sizesToPlot}) or the 0.25, 0.5 and 0.75 quantiles of either the observed data (if supplied) or the range of meshpoints (if not); this size is printed in the top right hand of every plot. If the theoretical density function curve is very distant from the histograms, increasing the {\tt nBigMatrix} argument may correct this discrepancy. 
 
 Other useful function for verifying that sufficient bins have been used include {\tt convergeLambda} and associated functions; see the help file and try them out. 
 
@@ -269,7 +270,11 @@ grid size. The user can access this information by writing:
 <<>>= 
 slotNames(Pmatrix)
 @ 
-and finally, the user can plot the Pmatrix using {\tt persp} or {\tt
+and obtain the slots by using the $@$ symbol, e.g., 
+<<>>= 
+Pmatrix@meshpoints
+@ 
+Finally, the user can plot the Pmatrix using {\tt persp} or {\tt
   image} (Figure~\ref{fig:two}). 
 \begin{figure}
 \begin{center}
@@ -277,7 +282,7 @@ and finally, the user can plot the Pmatrix using {\tt persp} or {\tt
 par(mfrow=c(1,2),bty="l",pty="s")
 persp(Pmatrix@meshpoints, Pmatrix@meshpoints, Pmatrix, ticktype = "detailed", 
 		  xlab = "Size at t", ylab = "Size at t+1", zlab="")
-image(Pmatrix@meshpoints, Pmatrix@meshpoints, t(Pmatrix), ticktype = "detailed", 
+image(Pmatrix@meshpoints, Pmatrix@meshpoints, t(Pmatrix), 
 		  xlab = "Size at t", ylab = "Size at t+1")
 contour(Pmatrix@meshpoints, Pmatrix@meshpoints, t(Pmatrix), add=TRUE)
 @
@@ -324,12 +329,12 @@ Fmatrix <- createIPMFmatrix(nBigMatrix = 50, minSize = -5,
                             fecObj = fv1, 
                             correction = "constant")
 @ 
-Note that {\tt makeFecObj} will use the relationships defined in {\tt Formula} and the family defined in {\tt Family} with transforms defined in {\tt Transform} in the order supplied. Please note that the fecundity {\tt Formula} MUSP match the {\tt Transform} since IPMPack needs to combine the parameters from  {\tt Formula}  with the right  {\tt Transform}  to appropriately build the F matrixs. 
+Note that {\tt makeFecObj} will use the relationships defined in {\tt Formula} and the family defined in {\tt Family} with transforms defined in {\tt Transform} in the order supplied. Please note that the fecundity {\tt Formula} MUST match the {\tt Transform} since IPMPack needs to combine the parameters from  {\tt Formula}  with the right  {\tt Transform}  to appropriately build the F matrixs. 
 
 The default arguments required to run {\tt makeFecObj} to create a fecundity
 object from which an F matrix with no discrete stage can be built are {\tt
 offspringSplitter=data.frame(continuous=1)}, {\tt 
-offspringTypeRates=data.frame(NA)} and {\tt fecByDiscrete=data.frame(NA)}.
+vitalRatesPerOffspringType=data.frame(NA)} and {\tt fecByDiscrete=data.frame(NA)}.
 Additionally, note that if there are values other than ``{\tt continuous}" in the {\tt stage} column of the data-frame named {\tt dff} in the example above, then the function will assume that multiple offspring classes are required, and the result will be an IPM with nBigMatrix + the number of offspring classes deduced (which is the number of names in {\tt stage} other than ``{\tt continuous}"). This may lead to a mismatch with the size of the P matrix unless a discrete transition matrix is explicitly being included in the P matrix (see below, incorporating discrete stages).
 
 If the data-frame contains an extra column {\tt offspringNext} that takes the
@@ -403,7 +408,7 @@ A quick check indicates that these data contain several types of stage classific
 <<>>= 
 table(dff$stage)
 @ 
-Given this data structure, the user can make a fertiliy object that reflects the
+Given this data structure, the user can make a fertility object that reflects the
 fact that propagules (seeds in this example) produced in one year may 
 recruit directly into the continuous phase (e.g., seedling), or may end up in a
 discrete stage (e.g., seed bank). The {\tt makeFecObj} (and similar functions)
@@ -461,7 +466,7 @@ them together:
 <<>>= 
 print(Pmatrix+Fmatrix)
 @
-The first three rows and columns concern transitions in and out of the discrete stages; the remainder are the usual T and F matrices describing moving across the continuous variables. The usual types of calculations (sensitivity via {\tt sens}, life expectancy via {\tt meanLifeExpect}, etc) can be applied here too.    
+The first three rows and columns concern transitions in and out of the discrete stages; the remainder are the usual P and F matrices describing moving across the continuous variables. The usual types of calculations (sensitivity via {\tt sens}, life expectancy via {\tt meanLifeExpect}, etc) can be applied here too.    
 
 \section{Discretely varying environments}
 One extension of IPMs is to create a compound IPM matrix where, in addition to
@@ -521,7 +526,7 @@ abline(v = length(Pmatrix@meshpoints) * (1:Pmatrix@nEnvClass))
 Essentially, the compound P matrix is a large matrix with stacked IPMs
 corresponding to each environment, modified to reflect movement
 between environmental states defined by {\ env1}. Passage time can be
-calculated using similar function, but now including the environmental
+calculated using a similar function, but now including the environmental
 matrix as an argument (equivalent life expectancy functions are in development): 
 <<>>= 
 pTimes <- stochPassageTime(Pmatrix@meshpoints[15], Pmatrix, env1)
@@ -576,7 +581,7 @@ stochGrowthRateSampleList(listIPMmatrix = IPMlist,
 where {\tt nRunIn} defines the number of time steps to discard from the start of the time series in order to remove transient dynamics, and {\tt tMax} is the total
 number of time steps to run, and should be large enough that increasing it does not substantially change the result (numbers presented here for efficiency are almost certaintly not large enough). Note that {\tt stoch.growth.rate} in the package {\tt popbio} will operate in essentially the same way, and provides more information, more efficiently.  
 
-%Simply taking the eigenvalue of the sum to the compound $T$ and $F$ matrices will
+%Simply taking the eigenvalue of the sum to the compound $P$ and $F$ matrices will
 %provide a sligthly different result given Jensen's inequality. %%check
                                 %%this... read Tulja + Carol stoch
                                 %%elastivity paper. 
@@ -606,7 +611,7 @@ To explore demographic projections for this model, the user must decide on
 a time scale and time length, and define it by a vector called
 `tVals'.  This time series can be used to reflect patterns in environmental data
 that repeat.  In this example we set {\tt tVals} to reflect monthly intervals
-over $4$ years, with years as the time scale and built covariates that vary
+over $4$ years, with years as the time scale and build covariates that vary
 seasonally, i.e., they fluctuates randomly around a sine wave which peaks once a
 year.  From this simulation, the user can generate a matrix containing time as
 rows and different covariates in columns.
@@ -666,7 +671,7 @@ names(res)
 @ 
 The vector called $\lambda$ and matrix called stableSize, etc, will consist of
 NAs, unless a list of Fmatrices is also provided, which would allow a complete
-population projection matrix can be built. IPMpack contains a similar function to obtain a list of F matrices, and if such a list is included as the third argument into the function {\tt getIPMOutput} (for which the default is `NULL'), the function will also return distributions of $\lambda$, the stable stage distribution, etc:
+population projection matrix to be built. IPMpack contains a similar function to obtain a list of F matrices, and if such a list is included as the third argument into the function {\tt getIPMOutput} (for which the default is `NULL'), the function will also return distributions of $\lambda$, the stable stage distribution, etc:
 <<>>= 
 fv <- makePostFecObjs(dff, explanatoryVariables = "size+size2", fecConstants=data.frame(0.01), 
                       burnin = 100, nitt = 400, Transform = "log")
@@ -676,7 +681,7 @@ FmatrixList <- makeListFmatrix(fv, nBigMatrix = 20, minSize = -5,
 res <- getIPMoutput(PmatrixList, targetSize = 5, FmatrixList)
 @ 
 
-Again, larger number of iterations, binsize, etc, are recommended. These results
+Again, larger numbers of iterations, binsizes, etc, are recommended. These results
 can be visually inspected too (Figure~\ref{fig:seven} p.~\pageref{fig:seven}):
 \begin{figure}
 \begin{center}

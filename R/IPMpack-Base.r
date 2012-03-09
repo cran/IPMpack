@@ -68,10 +68,6 @@ setClass("growthObj",
 setClass("growthObjPois",
 		representation(fit = "glm"))
 
-#setClass("growthObjNegBin",
-#		representation(fit = "list"))
-
-
 # Create a generic growth object with normal errors on increment
 setClass("growthObjIncr",
 		representation(fit = "lm",sd="numeric"))
@@ -107,6 +103,9 @@ setClass("growthObjHossfeld",
 setClass("growthObjPois",
 		representation(fit = "glm"))
 
+setClass("growthObjNegBin",
+		representation(fit = "list"))
+
 ## SURVIVAL OBJECTS ##
 # Create a generic survival object
 setClass("survObj",
@@ -127,7 +126,7 @@ setClass("fecObj",
 				fecConstants = "data.frame",
 				offspringSplitter = "data.frame",
 				fecByDiscrete = "data.frame",
-				offspringTypeRates = "data.frame",
+				vitalRatesPerOffspringType = "data.frame",
 				Transform = "character",
 				offspringRel = "lm",
 				sdOffspringSize = "numeric")
@@ -139,13 +138,40 @@ setClass("fecObj",
 ## DISCRETE TRANSITION MATRIX OBJECTS ##
 # Create a generic discrete transition matrix object
 setClass("discreteTrans",
-		representation(nclasses = "numeric",
-				discreteTrans = "matrix",
-				discreteSurv = "matrix",
+		representation(discreteTrans = "matrix",
 				meanToCont = "matrix",
 				sdToCont = "matrix",
-				distribToDiscrete = "matrix",
 				survToDiscrete = "glm"))
+
+
+
+
+
+
+## INTEGER FECUNDITY OBJECTS ##
+# Create a generic fecundity object
+setClass("fecObjInteger",
+		representation(fitFec = "list",
+				fecNames = "character",
+				fecConstants = "data.frame",
+				offspringSplitter = "data.frame",
+				fecByDiscrete = "data.frame",
+				vitalRatesPerOffspringType = "data.frame",
+				Transform = "character",
+				offspringRel = "glm",
+				thetaOffspringSize = "numeric",
+				distOffspring = "character")
+)
+
+
+## DISCRETE TRANSITION MATRIX INTEGER OBJECTS ##
+# Create a generic discrete transition matrix object
+setClass("discreteTransInteger",
+		representation(discreteTrans = "matrix",
+				meanToCont = "matrix",
+				thetaToCont = "matrix",
+				survToDiscrete = "glm",
+				distToCont = "character"))
 
 
 
@@ -173,6 +199,8 @@ setMethod("surv",
 			newd$size2 <- size^2
 			newd$size3 <- size^3
 			
+			if (length(grep("expsize",
+							survObj@fit$formula))>0) newd$expsize=exp(size)
 			if (length(grep("logsize",
 							survObj@fit$formula))>0) newd$logsize=log(size)
 			if (length(grep("logsize2",
@@ -204,6 +232,8 @@ setMethod("surv",
 			newd$size2 <- size^2
 			newd$size3 <- size^3
 			
+			if (length(grep("expsize",
+							survObj@fit$formula))>0) newd$expsize=exp(size)
 			if (length(grep("logsize",
 							survObj@fit$formula))>0) newd$logsize=log(size)
 			if (length(grep("logsize2",
@@ -235,6 +265,8 @@ setMethod("growth",
 					stringsAsFactors = FALSE)
 			newd$size2 <- size^2
 			newd$size3 <- size^3
+			if (length(grep("expsize",
+							growthObj@fit$formula))>0) newd$expsize <- exp(size)
 			if (length(grep("logsize",
 							growthObj@fit$formula))>0) { newd$logsize <- log(size)}
 			
@@ -254,6 +286,8 @@ setMethod("growth",
 			newd$size2 <- size^2
 			newd$size3 <- size^3
 			
+			if (length(grep("expsize",
+							growthObj@fit$formula))>0) newd$expsize <- exp(size)
 			if (length(grep("logsize",
 							growthObj@fit$formula))>0) { newd$logsize <- log(size)}
 			
@@ -261,6 +295,28 @@ setMethod("growth",
 			u <- dpois(sizeNext,mux,log=FALSE)  
 			return(u);
 		})
+
+
+#  growth transition (poisson model) probability from size to sizeNext at that covariate level 
+#	NOTE DO NOT USE THIS WITH AN IPM!!
+setMethod("growth", 
+		c("numeric","numeric","data.frame","growthObjNegBin"),
+		function(size,sizeNext,cov,growthObj){
+			newd <- data.frame(cbind(cov,size=size),
+					stringsAsFactors = FALSE)
+			newd$size2 <- size^2
+			newd$size3 <- size^3
+			
+			if (length(grep("expsize",
+							growthObj@fit$formula))>0) newd$expsize <- exp(size)
+			if (length(grep("logsize",
+							growthObj@fit$formula))>0) { newd$logsize <- log(size)}
+			
+			mux <- predict(growthObj@fit[[1]],newd,type="response")
+			u <- dnbinom(sizeNext,mu=mux,size=growthObj@fit[[2]],log=FALSE)  
+			return(u);
+		})
+
 
 
 
@@ -273,6 +329,8 @@ setMethod("growth",
 			newd$size2 <- size^2
 			newd$size3 <- size^3
 			
+			if (length(grep("expsize",
+							growthObj@fit$formula))>0) newd$expsize <- exp(size)
 			if (length(grep("logsize",
 							growthObj@fit$formula))>0) newd$logsize=log(size)
 			
@@ -298,6 +356,8 @@ setMethod("growth",
 			newd$size2 <- size^2
 			newd$size3 <- size^3
 			
+			if (length(grep("expsize",
+							growthObj@fit$formula))>0) newd$expsize <- exp(size)
 			if (length(grep("logsize",
 							names(growthObj@fit$coefficients)))>0) newd$logsize=log(size)
 			
@@ -319,6 +379,8 @@ setMethod("growth",
 			newd$size2 <- size^2
 			newd$size3 <- size^3
 			
+			if (length(grep("expsize",
+							growthObj@fit$formula))>0) newd$expsize <- exp(size)
 			if (length(grep("logsize",
 							growthObj@fit$formula))>0) newd$logsize=log(size)
 			
@@ -338,6 +400,8 @@ setMethod("growth",
 			newd$size2 <- size^2
 			newd$size3 <- size^3
 			
+			if (length(grep("expsize",
+							names(growthObj@fit$coefficients)))>0) newd$expsize <- exp(size)
 			if (length(grep("logsize",
 							names(growthObj@fit$coefficients)))>0) newd$logsize=log(size)
 			
@@ -360,6 +424,8 @@ setMethod("growthCum",
 			newd$size2 <- size^2
 			newd$size3 <- size^3
 			
+			if (length(grep("expsize",
+							names(growthObj@fit$coefficients)))>0) newd$expsize <- exp(size)
 			if (length(grep("logsize",
 							names(growthObj@fit$coefficients)))>0) newd$logsize=log(size)
 			
@@ -391,6 +457,8 @@ setMethod("growthCum",
 					stringsAsFactors = FALSE)
 			newd$size2 <- size^2
 			newd$size3 <- size^3
+			if (length(grep("expsize",
+							growthObj@fit$formula))>0) newd$expsize <- exp(size)
 			if (length(grep("logsize",
 							growthObj@fit$formula))>0) newd$logsize=log(size)
 			mux <- predict(growthObj@fit,newd,type="response")
@@ -409,6 +477,8 @@ setMethod("growthCum",
 					stringsAsFactors = FALSE)
 			newd$size2 <- size^2
 			newd$size3 <- size^3
+			if (length(grep("expsize",
+							growthObj@fit$formula))>0) newd$expsize <- exp(size)
 			if (length(grep("logsize",
 							growthObj@fit$formula))>0) newd$logsize=log(size)
 			
@@ -431,6 +501,8 @@ setMethod("growthCum",
 			newd$size2 <- size^2
 			newd$size3 <- size^3
 			
+			if (length(grep("expsize",
+							names(growthObj@fit$coefficients)))>0) newd$expsize <- exp(size)
 			if (length(grep("logsize",
 							names(growthObj@fit$coefficients)))>0) newd$logsize=log(size)
 			
@@ -452,6 +524,8 @@ setMethod("growthCum",
 					stringsAsFactors = FALSE)
 			newd$size2 <- size^2
 			newd$size3 <- size^3
+			if (length(grep("expsize",
+							growthObj@fit$formula))>0) newd$expsize <- exp(size)
 			if (length(grep("logsize",
 							growthObj@fit$formula))>0) newd$logsize=log(size)
 			
@@ -473,6 +547,8 @@ setMethod("growthCum",
 			newd$size2 <- size^2
 			newd$size3 <- size^3
 			
+			if (length(grep("expsize",
+							names(growthObj@fit$coefficients)))>0) newd$expsize <- exp(size)
 			if (length(grep("logsize",
 							names(growthObj@fit$coefficients))) > 0) newd$logsize=log(size)
 			
@@ -496,6 +572,8 @@ setMethod("growth",
 			newd$size2 <- size^2
 			newd$size3 <- size^3
 			
+			if (length(grep("expsize",
+							names(growthObj@fit$coefficients)))>0) newd$expsize <- exp(size)
 			if (length(grep("logsize",
 							names(growthObj@fit$coefficients)))>0) newd$logsize=log(size)
 			
@@ -538,6 +616,8 @@ setMethod("growth",
 			newd$size2 <- size^2
 			newd$size3 <- size^3
 			
+			if (length(grep("expsize",
+							names(growthObj@fit$coefficients))) > 0) newd$expsize <- exp(size)
 			if (length(grep("logsize",
 							names(growthObj@fit$coefficients))) > 0) newd$logsize = log(size)
 			
@@ -602,6 +682,19 @@ setClass("IPMmatrix",
 		contains="matrix")
 
 
+
+#Class for the matrix that holds the IPM
+#setClass("DiscreteMatrix",
+#		representation(nDiscrete = "numeric", #number of discrete classes
+#				nEnvClass = "numeric", #number of covariate levels
+#				nBigMatrix = "numeric", #the resolution of the IPM
+#				meshpoints = "numeric",
+#				env.index = "numeric",
+#				names.discrete = "character"),
+#		contains="matrix")
+
+
+
 #Function creates a single T.IPM (survival and growth
 #transitions only) for a chosen size range, env category
 #(single one at a time) and growth and survival objects
@@ -628,25 +721,31 @@ setClass("IPMmatrix",
 createIPMPmatrix <- function (nEnvClass = 1, nBigMatrix = 50, minSize = -1, maxSize = 50, 
 		chosenCov = data.frame(covariate = 1), growObj, survObj, 
 		discreteTrans = 1, integrateType = "midpoint", correction = "none") {
-	if (class(growObj) == "growthObjPois") 
+	
+	if (class(growObj) == "growthObjPois" | class(growObj) =="growthObjNegBin") 
 		print("warning: IPMs not appropriate with discrete growth processes")
 	b <- minSize + c(0:nBigMatrix) * (maxSize - minSize)/nBigMatrix
 	y <- 0.5 * (b[1:nBigMatrix] + b[2:(nBigMatrix + 1)])
 	h <- y[2] - y[1]
+
+	
 	if (integrateType == "midpoint") {
 		get.matrix <- t(outer(y, y, growSurv, cov = chosenCov, 
 						growthObj = growObj, survObj = survObj)) * h
 	}
+
 	if (integrateType == "cumul") {
 		get.matrix.cum <- t(outer(y, b, growthCum, cov = chosenCov, 
 						growthObj = growObj))
 		get.matrix <- get.matrix.cum[2:(nBigMatrix + 1), ] - 
 				get.matrix.cum[1:nBigMatrix, ]
-		get.matrix[nBigMatrix, nBigMatrix] <- get.matrix[nBigMatrix, 
-				nBigMatrix] + (1 - sum(get.matrix[, nBigMatrix]))
+		#remove because alden...
+		#get.matrix[nBigMatrix, nBigMatrix] <- get.matrix[nBigMatrix, 
+	    #			nBigMatrix] + (1 - sum(get.matrix[, nBigMatrix]))
 		get.matrix <- t(t(get.matrix) * surv(size = y, cov = chosenCov, 
 						survObj = survObj))
 	}
+
 	if (correction == "constant") {
 		nvals <- colSums(get.matrix,na.rm=TRUE)
 		loc0 <- which(nvals == 0 , arr.ind = TRUE)
@@ -660,33 +759,107 @@ createIPMPmatrix <- function (nEnvClass = 1, nBigMatrix = 50, minSize = -1, maxS
 		get.matrix <- t((t(get.matrix)/nvals) * surv(size = y, 
 						cov = chosenCov, survObj = survObj))
 	}
+
+	if (correction=="discretizeExtremes"){
+		tooLow <- growthCum(y,b[1], cov = chosenCov, 
+						growthObj = growObj)
+		tooHigh <- 1-growthCum(y,b[length(b)],cov = chosenCov, 
+						growthObj = growObj)
+		get.matrix[1,] <- get.matrix[1,]+tooLow
+		get.matrix[nBigMatrix,] <- get.matrix[nBigMatrix,]+tooHigh
+	}
+	
+	
 	rc <- new("IPMmatrix", nDiscrete = 0, nEnvClass = 1, nBigMatrix = nBigMatrix, 
 			nrow = 1 * nBigMatrix, ncol = 1 * nBigMatrix, meshpoints = y, 
 			env.index = rep(1:nEnvClass, each = nBigMatrix), names.discrete = "")
 	rc[, ] <- get.matrix
+
 	if (class(discreteTrans) == "discreteTrans") {
-		nDisc <- ncol(discreteTrans@discreteSurv)
+		nDisc <- ncol(discreteTrans@meanToCont)
 		survToDiscrete <- predict(discreteTrans@survToDiscrete, 
 				data.frame(size = y, size2 = (y * y)), type = "response")
 		cont.to.cont <- get.matrix * matrix(1 - survToDiscrete, 
-				nrow = nBigMatrix, ncol = nBigMatrix, byrow = T)
-		disc.to.disc <- discreteTrans@discreteTrans[1:nDisc, 
-						1:nDisc] * matrix(c(discreteTrans@discreteSurv), 
-						nrow = nDisc, ncol = nDisc, byrow = T)
-		disc.to.cont <- matrix(NA, ncol = nDisc, nrow = nBigMatrix)
-		cont.to.disc <- matrix(NA, nrow = nDisc, ncol = nBigMatrix)
+				nrow = nBigMatrix, ncol = nBigMatrix, byrow = TRUE)
+		disc.to.disc <- discreteTrans@discreteTrans[1:nDisc, 1:nDisc]
+		disc.to.cont <- matrix(0, ncol = nDisc, nrow = nBigMatrix)
+		cont.to.disc <- matrix(0, nrow = nDisc, ncol = nBigMatrix)
 		for (j in 1:nDisc) {
 			tmp <- dnorm(y, discreteTrans@meanToCont[j], discreteTrans@sdToCont[j]) * 
 					h
 			if (correction == "constant") 
 				tmp <- tmp/sum(tmp)
-			disc.to.cont[, j] <- discreteTrans@discreteSurv[,j] * 
-					discreteTrans@discreteTrans["continuous", j] * tmp
-			cont.to.disc[j, ] <- discreteTrans@distribToDiscrete[j, ] * surv(y, chosenCov, survObj) * survToDiscrete
+			disc.to.cont[, j] <- discreteTrans@discreteTrans["continuous", j] * tmp
+		}
+		if (sum(discreteTrans@discreteTrans[1:nDisc,"continuous"])==0) {
+			cont.to.disc[] <- 0
+		} else {
+			cont.to.disc[j, ] <- surv(y, chosenCov, survObj) * survToDiscrete * 
+					discreteTrans@discreteTrans[j,"continuous"] / sum(discreteTrans@discreteTrans[1:nDisc,"continuous"]) 
 		}
 		get.disc.matrix <- rbind(cbind(disc.to.disc, cont.to.disc), 
 				cbind(disc.to.cont, cont.to.cont))
 		rc <- new("IPMmatrix", nDiscrete = nDisc, nEnvClass = 1, 
+				nBigMatrix = nBigMatrix, nrow = 1 * nBigMatrix + 
+						nDisc, ncol = 1 * nBigMatrix + nDisc, meshpoints = y, 
+				env.index = rep(1:nEnvClass, each = nBigMatrix), 
+				names.discrete = rownames(discreteTrans@discreteTrans)[1:nDisc])
+		rc[, ] <- get.disc.matrix
+	}
+	return(rc)
+}
+
+
+##same function... but for discrete (no integration!)  ####
+###
+### NOTE ASSUMES TRANSITIONS OUT ARE DISCRETE - THIS MEANS THAT SDTOCONT
+### IS THE NEGBINON ISSUE    #########
+##
+createIntegerPmatrix <- function (nEnvClass = 1, 
+		meshpoints=1:20,
+		chosenCov = data.frame(covariate = 1), 
+		growObj, survObj, 
+		discreteTrans = 1) {
+
+	y <- meshpoints
+	nBigMatrix <- length(y)
+	
+	get.matrix <- t(outer(y, y, growSurv, cov = chosenCov, 
+						growthObj = growObj, survObj = survObj))
+			
+	
+	rc <- new("IPMmatrix", nDiscrete = 0, nEnvClass = 1, nBigMatrix = nBigMatrix, 
+			nrow = 1 * nBigMatrix, ncol = 1 * nBigMatrix, meshpoints = y, 
+			env.index = rep(1:nEnvClass, each = nBigMatrix), names.discrete = "")
+	rc[, ] <- get.matrix
+	
+	if (class(discreteTrans) == "discreteTrans") {
+		nDisc <- ncol(discreteTrans@meanToCont)
+		survToDiscrete <- predict(discreteTrans@survToDiscrete, 
+				data.frame(size = y, size2 = (y * y)), type = "response")
+		cont.to.cont <- get.matrix * matrix(1 - survToDiscrete, 
+				nrow = nBigMatrix, ncol = nBigMatrix, byrow = TRUE)
+		disc.to.disc <- discreteTrans@discreteTrans[1:nDisc, 1:nDisc]
+		disc.to.cont <- matrix(0, ncol = nDisc, nrow = nBigMatrix)
+		cont.to.disc <- matrix(0, nrow = nDisc, ncol = nBigMatrix)
+		for (j in 1:nDisc) {
+			if (discreteTrans@distToCont=="poisson") 
+			 tmp <- dpois(y, discreteTrans@meanToCont[j]) 
+		 if (discreteTrans@distToCont=="negBin") 
+			 tmp <- dnbinom(y, mu=discreteTrans@meanToCont[j], size=discreteTrans@thetaToCont[j]) 
+		 		 		 
+			disc.to.cont[, j] <- discreteTrans@discreteTrans["continuous", j] * tmp
+		}
+		if (sum(discreteTrans@discreteTrans[1:nDisc,"continuous"])==0) {
+			cont.to.disc[] <- 0
+		} else {
+			cont.to.disc[j, ] <- surv(y, chosenCov, survObj) * survToDiscrete * 
+					discreteTrans@discreteTrans[j,"continuous"] / sum(discreteTrans@discreteTrans[1:nDisc,"continuous"]) 
+		}
+		get.disc.matrix <- rbind(cbind(disc.to.disc, cont.to.disc), 
+				cbind(disc.to.cont, cont.to.cont))
+
+		rc <- new("DiscreteMatrix", nDiscrete = nDisc, nEnvClass = 1, 
 				nBigMatrix = nBigMatrix, nrow = 1 * nBigMatrix + 
 						nDisc, ncol = 1 * nBigMatrix + nDisc, meshpoints = y, 
 				env.index = rep(1:nEnvClass, each = nBigMatrix), 
@@ -730,7 +903,8 @@ createCompoundPmatrix <- function(nEnvClass = 2,
 		survObj,
 		discreteTrans=1,
 		integrateType="midpoint",
-		correction="none") {
+		correction="none"
+) {
 	
 	
 	#warnings...
@@ -746,8 +920,9 @@ createCompoundPmatrix <- function(nEnvClass = 2,
 	# step size for mid point rule, see equations 4 and 5
 	h<-y[2]-y[1]
 	
-	#establish how how many discrete classes there are
-	if (class(discreteTrans)=="discreteTrans") nDisc <- ncol(discreteTrans@discreteSurv) else nDisc <- 0
+	#establish how how many discrete classes there are	
+	if (class(discreteTrans) == "discreteTrans") nDisc <- ncol(discreteTrans@meanToCont) else nDisc <- 0
+	
 	
 	#indexes for slotting in IPMs
 	indexes <- rep(1:nEnvClass,each=(nBigMatrix+nDisc))
@@ -760,67 +935,11 @@ createCompoundPmatrix <- function(nEnvClass = 2,
 	#loop over habitats / environments
 	for (k in 1:nEnvClass) { 
 		#IPM for individuals starting in env k
-		
-		#print(k)
-		
-		if (integrateType=="midpoint") { 
-			get.matrix <- (maxSize-minSize)*
-					t(outer(y,y,growSurv,cov=data.frame(covariate=as.factor(k)),
-									growthObj=growObj,survObj=survObj))/nBigMatrix  
-		}
-		if (integrateType=="cumul") {
-			get.matrix.cum <- 
-					t(outer(y,b,growthCum,cov=data.frame(covariate=as.factor(k)),
-									growthObj=growObj))
-			get.matrix <- get.matrix.cum[2:(nBigMatrix+1),]-get.matrix.cum[1:nBigMatrix,]
-			get.matrix <- t(t(get.matrix)*surv(size=y,cov=data.frame(covariate=as.factor(k)),survObj=survObj))
-			
-		}
-		
-		#fix any integration issues reducing survival by dividing by col sums and multiply by survival
-		if (correction == "constant") {
-			nvals <- colSums(get.matrix,na.rm=TRUE)
-			loc0 <- which(nvals == 0 , arr.ind = TRUE)
-			if (length(loc0) > 0) {
-				print("warnings - columns that sum to 0 or that have NAs - assuming survival is along the diagonal; plot your Pmatrix to check it")
-				get.matrix[,loc0] <- 0
-				get.matrix[cbind(loc0, loc0)] <- surv(size = y[loc0], 
-						cov = data.frame(covariate=as.factor(k)), survObj = survObj)
-			}
-			nvals <- colSums(get.matrix,na.rm=TRUE)
-			get.matrix <- t((t(get.matrix)/nvals) * surv(size = y, 
-							cov = data.frame(covariate=as.factor(k)), survObj = survObj))
-		}
-		
-		#names of discrete classes default
-		nmes <- ""
-		
-		
-		# In case of discrete classes, take the IPM constructed above and add discrete classes defined in discreteTrans
-		if (class(discreteTrans)=="discreteTrans") {
-			nmes <- rownames(discreteTrans@discreteTrans)
-			survToDiscrete <- predict(discreteTrans@survToDiscrete,data.frame(size=y,size2=(y*y)),type="response")
-			cont.to.cont <- get.matrix*matrix(1-survToDiscrete,nrow=nBigMatrix,ncol=nBigMatrix,byrow=T)
-			disc.to.disc <- discreteTrans@discreteTrans[1:nDisc,1:nDisc]*matrix(c(discreteTrans@discreteSurv),
-					nrow=nDisc,ncol=nDisc,byrow=T)
-			disc.to.cont <- matrix(NA,ncol=nDisc,nrow=nBigMatrix)
-			cont.to.disc <- matrix(NA,nrow=nDisc,ncol=nBigMatrix)
-			
-			#print(discreteTrans@meanToCont)
-			#print(discreteTrans@sdToCont)
-			
-			for (j in 1:nDisc) {
-				tmp<-dnorm(y,discreteTrans@meanToCont[j],discreteTrans@sdToCont[j])*h
-				if (correction=="constant") tmp<-tmp/sum(tmp)
-				
-				#print(tmp)
-				
-				disc.to.cont[,j] <- discreteTrans@discreteSurv[,j]*discreteTrans@discreteTrans["continuous",j]*tmp
-				cont.to.disc[j,] <- discreteTrans@distribToDiscrete[j,]*surv(y,cov=data.frame(covariate=as.factor(k)),survObj)*survToDiscrete
-			}
-			
-			get.matrix <- rbind(cbind(disc.to.disc,cont.to.disc),cbind(disc.to.cont,cont.to.cont))
-		}
+		get.matrix <- createIPMPmatrix(nEnvClass = nEnvClass, 
+				nBigMatrix = nBigMatrix, minSize = minSize, maxSize = maxSize, 
+				chosenCov = data.frame(covariate = as.factor(k)), growObj=growObj, survObj=survObj, 
+				discreteTrans = discreteTrans, 
+				integrateType = integrateType, correction = correction)		
 		
 		# transit them
 		subset <- c(1:nEnvClass)[envMatrix[,k]>0]
@@ -830,6 +949,8 @@ createCompoundPmatrix <- function(nEnvClass = 2,
 		
 	}
 	
+	nmes<-""
+
 	rc <- new("IPMmatrix",
 			nEnvClass = nEnvClass, 
 			nBigMatrix = nBigMatrix,
@@ -837,7 +958,7 @@ createCompoundPmatrix <- function(nEnvClass = 2,
 			ncol = nEnvClass*(nBigMatrix + nDisc),
 			meshpoints = y,
 			env.index = rep(1:nEnvClass, each = nBigMatrix,
-					names.discrete = nmes))
+			names.discrete = nmes))
 	
 	rc[,] <- megamatrix
 	
@@ -857,7 +978,8 @@ createCompoundPmatrix <- function(nEnvClass = 2,
 	
 	newd$size2 <- x^2
 	newd$size3 <- x^3
-	
+	newd$expsize <- exp(x)
+
 	if (length(fecObj@offspringRel)>1) {
 		if (length(grep("logsize", fecObj@offspringRel$formula))>0) { newd$logsize <- log(x)}
 	}
@@ -871,9 +993,14 @@ createCompoundPmatrix <- function(nEnvClass = 2,
 	#rownames(fecValues) <- c(fecObj@fecNames,names(fecObj@fecConstants))
 	for (i in 1:length(fecObj@fitFec)) fecValues[i,] <- predict(fecObj@fitFec[[i]],newd,type="response")
 	if (length(grep("log",fecObj@Transform))>0) for (i in grep("log",fecObj@Transform)) fecValues[i,]<-exp(fecValues[i,])
+	if (length(grep("exp",fecObj@Transform))>0) for (i in grep("exp",fecObj@Transform)) fecValues[i,]<-log(fecValues[i,])
 	if (length(grep("sqrt",fecObj@Transform))>0) for (i in grep("sqrt",fecObj@Transform)) fecValues[i,]<-(fecValues[i,])^2
 	if (length(grep("-1",fecObj@Transform))>0) for (i in grep("-1",fecObj@Transform)) fecValues[i,]<-fecValues[i,]+1
-	prodFecValues <- apply(fecValues[which(fecObj@offspringTypeRates[,"continuous"]==1),],2,prod)*unlist(fecObj@offspringSplitter["continuous"])
+	if (length(which(fecObj@vitalRatesPerOffspringType[,"continuous"]==1))>1) {
+		prodFecValues <- apply(fecValues[which(fecObj@vitalRatesPerOffspringType[,"continuous"]==1),],2,prod)*unlist(fecObj@offspringSplitter["continuous"])
+	} else {
+		prodFecValues <- fecValues[which(fecObj@vitalRatesPerOffspringType[,"continuous"]==1),]*unlist(fecObj@offspringSplitter["continuous"])
+	}
 	return(list(prodFecValues,fecValues))
 }
 
@@ -885,6 +1012,8 @@ createCompoundPmatrix <- function(nEnvClass = 2,
 	newd$size2 <- x^2
 	newd$size3 <- x^3
 	
+	if (length(grep("expsize",
+					fecObj@offspringRel$formula))>0) { newd$expsize <- exp(x)}
 	if (length(grep("logsize",
 					fecObj@offspringRel$formula))>0) { newd$logsize <- log(x)}
 	u <- .fecRaw(x=x,cov=cov,fecObj=fecObj)[[1]]*
@@ -913,6 +1042,8 @@ createCompoundPmatrix <- function(nEnvClass = 2,
 	
 	newd$size2 <- x^2
 	newd$size3 <- x^3
+	if (length(grep("expsize",fecObj@offspringRel$formula))>0 |
+			length(grep("expsize",growObj@fit$formula))>0) { newd$expsize <- exp(x)}            
 	if (length(grep("logsize",fecObj@offspringRel$formula))>0 |
 			length(grep("logsize",growObj@fit$formula))>0) { newd$logsize <- log(x)}            
 	u <- .fecRaw(x=x,cov=cov,fecObj=fecObj)[[1]]*
@@ -922,6 +1053,7 @@ createCompoundPmatrix <- function(nEnvClass = 2,
 }
 
 
+
 ## A function that outer can use giving pnorm for offspring reprod
 .offspringCum <- function(x,y,cov=data.frame(covariate=1),fecObj) {
 	newd <- data.frame(cbind(cov,size=x),
@@ -929,6 +1061,7 @@ createCompoundPmatrix <- function(nEnvClass = 2,
 	
 	newd$size2 <- x^2
 	newd$size3 <- x^3
+	if (length(grep("expsize",fecObj@offspringRel$formula))>0) { newd$expsize <- exp(x)}            
 	if (length(grep("logsize",fecObj@offspringRel$formula))>0) { newd$logsize <- log(x)}            
 	u <- pnorm(y,predict(fecObj@offspringRel,newdata=newd, type="response"),fecObj@sdOffspringSize)
 	return(u)
@@ -978,9 +1111,13 @@ createIPMFmatrix <- function(fecObj,
 	# 1. pre-census
 	if (preCensus) { 
 		#print("here")
+		##NOTE that the condition is necessary because you might ONLY have discrete offspring
+		# in which case correction makes no sense
 		if (integrateType=="midpoint"&fecObj@offspringSplitter$continuous>0) { 
 			tmp <- t(outer(X=y,Y=y,.fecPreCensus,cov=chosenCov,fecObj=fecObj))*h 
 		}
+		##NOTE that the condition is necessary because you might ONLY have discrete offspring
+		# in which case correction makes no sense
 		if (integrateType=="cumul"&fecObj@offspringSplitter$continuous>0) {
 			#offspring extremes (pnorm) 
 			tmp.cum <- t(outer(X=y,Y=b,.offspringCum,cov=chosenCov,
@@ -990,20 +1127,40 @@ createIPMFmatrix <- function(fecObj,
 			tmp <- t(t(tmp)*.fecRaw(x=y,cov=chosenCov,fecObj=fecObj)[[1]])      
 		}
 		
+		##NOTE that the condition is necessary because you might ONLY have discrete offspring
+		# in which case correction makes no sense
 		if (correction=="constant"&fecObj@offspringSplitter$continuous>0) {
 			# in this case, column sums should equal raw fecundity
-			correction <-.fecRaw(x=y,cov=chosenCov,fecObj=fecObj)[[1]]/colSums(tmp)
-			tmp <- t(t(tmp)*correction)
+			correction.here <-.fecRaw(x=y,cov=chosenCov,fecObj=fecObj)[[1]]/colSums(tmp)
+			tmp <- t(t(tmp)*correction.here)
 		}
-		
+		##NOTE that the condition is necessary because you might ONLY have discrete offspring
+		# in which case correction makes no sense
+		if (correction=="discretizeExtremes"&fecObj@offspringSplitter$continuous>0){
+			tooLow <- .offspringCum(x=y,y=b[1], cov = chosenCov, 
+					fecObj = fecObj)
+			tooHigh <- 1-.offspringCum(x=y,y=b[length(b)],cov = chosenCov, 
+					fecObj = fecObj)
+			tmp[1,] <- tmp[1,]+tooLow
+			tmp[nBigMatrix,] <- tmp[nBigMatrix,]+tooHigh
+		}
+				
 		# 2. post-census
 	} else {
+		# if no survObj is provided, it is assumed that all individuals survive to the time of breeding
+		if (is.null(survObj)) survObj <- makeSurvObj(data.frame(size=runif(21),surv=rep(1,21)),Formula=surv~size)
+		# if no growObj is provided, it is assumed that all individuals retain the same size until the time of breeding		
+		if (is.null(growObj)) growObj <- makeGrowthObj(data.frame(size=seq(21),sizeNext=seq(21)),Formula=sizeNext~size)
 		#print ("Warning: in the current version of IPMpack, createIPMFmatrix still ignores the growObj you provided for your post-breeding F matrix. This will be included in a later version. Survival until breeding is already included in this version.")
+		##NOTE that the condition is necessary because you might ONLY have discrete offspring
+		# in which case correction makes no sense
 		if (integrateType=="midpoint"&fecObj@offspringSplitter$continuous>0) { 
 			tmp <- t(outer(X=y,Y=y,.fecPostCensus,
 							cov=chosenCov,fecObj=fecObj, growObj=growObj,
 							survObj=survObj))*h 
 		}
+		##NOTE that the condition is necessary because you might ONLY have discrete offspring
+		# in which case correction makes no sense
 		if (integrateType=="cumul"&fecObj@offspringSplitter$continuous>0) {
 			#make the extreme bins offspring matrix
 			tmp.cum <- t(outer(X=y,Y=b,.offspringCum,cov=chosenCov,
@@ -1022,12 +1179,23 @@ createIPMFmatrix <- function(fecObj,
 			
 		}
 		
+		##NOTE that the condition is necessary because you might ONLY have discrete offspring
+		# in which case correction makes no sense
 		if (correction=="constant"&fecObj@offspringSplitter$continuous>0) {
 			# in this case, column sums should equal raw fecundity * survival
-			correction <-.fecRaw(x=y,cov=chosenCov,fecObj=fecObj)[[1]]*surv(size=y,cov=chosenCov,survObj=survObj)/colSums(tmp)
-			tmp <- t(t(tmp)*correction)
+			correction.here <-.fecRaw(x=y,cov=chosenCov,fecObj=fecObj)[[1]]*surv(size=y,cov=chosenCov,survObj=survObj)/colSums(tmp)
+			tmp <- t(t(tmp)*correction.here)
 		}
-		
+		##NOTE that the condition is necessary because you might ONLY have discrete offspring
+		# in which case correction makes no sense
+		if (correction=="discretizeExtremes"&fecObj@offspringSplitter$continuous>0){
+			tooLow <- .offspringCum(x=y,y=b[1], cov = chosenCov, 
+					fecObj = fecObj)
+			tooHigh <- 1-.offspringCum(x=y,y=b[length(b)],cov = chosenCov, 
+					fecObj = fecObj)
+			tmp[1,] <- tmp[1,]+tooLow
+			tmp[nBigMatrix,] <- tmp[nBigMatrix,]+tooHigh
+		}
 	}
 	
 	get.matrix <- to.cont <- tmp
@@ -1038,12 +1206,23 @@ createIPMFmatrix <- function(fecObj,
 	if (nDisc>0) {
 		namesDiscrete <- colnames(fecObj@offspringSplitter[1:nDisc])
 		to.discrete <- matrix(0,nrow=nDisc,ncol=nBigMatrix)
-		for (i in 1:nDisc) to.discrete[i,] <- apply(.fecRaw(x=y,cov=chosenCov,fecObj=fecObj)[[2]][which(fecObj@offspringTypeRates[,namesDiscrete[i]]==1),],2,prod)*unlist(fecObj@offspringSplitter[namesDiscrete[i]])
+		for (i in 1:nDisc) {
+			if (length(which(fecObj@vitalRatesPerOffspringType[,namesDiscrete[i]]==1))>1) {
+				to.discrete[i,] <- apply(.fecRaw(x=y,cov=chosenCov,fecObj=fecObj)[[2]][which(fecObj@vitalRatesPerOffspringType[,namesDiscrete[i]]==1),],2,prod)*unlist(fecObj@offspringSplitter[namesDiscrete[i]])
+			} else {
+				to.discrete[i,] <- .fecRaw(x=y,cov=chosenCov,fecObj=fecObj)[[2]][which(fecObj@vitalRatesPerOffspringType[,namesDiscrete[i]]==1),]*unlist(fecObj@offspringSplitter[namesDiscrete[i]])
+			}
+		}
 		from.discrete <- matrix(0,ncol=nDisc,nrow=nDisc+nBigMatrix)
 		if (names(fecObj@fecByDiscrete)[1]!="NA.") {
 			if (sum(names(fecObj@fecByDiscrete)!=namesDiscrete)>0) stop ("Error - the names of the discrete classes as you provided for the data.frame fecByDiscrete are not 100% the same discrete class names in your data.frame offspringSplitter. They should also be in alphabetical order.")
-			if (sum(fecObj@fecByDiscrete)>0) {
-				print ("Warning - number and sizes of offspring produced by individuals in discrete classes cannot be calculated when offspring size is a function of parent size. The Fmatrix contains zeros instead. Only solution at this point: change the F matrix yourself afterwards.")
+			for (j in 1:nDisc) {
+				for (i in 1:nDisc) {
+					from.discrete[i,j] <- unlist(fecObj@offspringSplitter[namesDiscrete[i]]*fecObj@fecByDiscrete[namesDiscrete[j]])
+				}
+			}
+			if (sum(fecObj@fecByDiscrete)>0&fecObj@offspringSplitter["continuous"]>0) {
+				print ("WARNING - number and sizes of offspring produced by individuals in discrete classes cannot be calculated yet. The Fmatrix contains zeros instead. Only solution at this point: change the F matrix yourself afterwards.")
 			}
 		}
 		get.matrix <- cbind(from.discrete,rbind(to.discrete,to.cont))
@@ -1070,6 +1249,157 @@ createIPMFmatrix <- function(fecObj,
 	
 	return(rc)
 }
+
+
+
+
+
+## A function that outer can use showing numbers from x to y via production and distribution offspring
+.fecPreCensusInteger <- function(x,y,cov=data.frame(covariate=1),fecObj) {
+	newd <- data.frame(cbind(cov,size=x),
+			stringsAsFactors = FALSE)	
+	newd$size2 <- x^2
+	newd$size3 <- x^3
+	
+	if (length(grep("expsize",
+					fecObj@offspringRel$formula))>0) { newd$expsize <- exp(x)}
+	if (length(grep("logsize",
+					fecObj@offspringRel$formula))>0) { newd$logsize <- log(x)}
+	u <- .fecRaw(x=x,cov=cov,fecObj=fecObj)[[1]]
+	if (fecObj@distOffspring=="poisson")
+			u <- u*dpois(y,predict(fecObj@offspringRel,newdata=newd, type="response"))
+	if (fecObj@distOffspring=="negBin")
+		u <- u*dnbinom(y,mu=predict(fecObj@offspringRel,newdata=newd, type="response"),
+				size=fecObj@thetaOffspringSize)
+
+	#print(cbind(y,predict(fecObj@offspringRel)))
+	
+	
+	return(u)
+}
+#### growth obj generally not needed down below.....
+## A function that outer can use showing numbers from x to y via production, growth, survival and distribution offspring
+.fecPostCensusInteger <- function(x,y,cov=data.frame(covariate=1),fecObj, growObj,survObj) {
+	newd <- data.frame(cbind(cov,size=x),
+			stringsAsFactors = FALSE)
+	
+	newd$size2 <- x^2
+	newd$size3 <- x^3
+	if (length(grep("expsize",fecObj@offspringRel$formula))>0 |
+			length(grep("expsize",growObj@fit$formula))>0) { newd$expsize <- exp(x)}            
+	if (length(grep("logsize",fecObj@offspringRel$formula))>0 |
+			length(grep("logsize",growObj@fit$formula))>0) { newd$logsize <- log(x)}            
+	u <- .fecRaw(x=x,cov=cov,fecObj=fecObj)[[1]]*
+			surv(size=x, cov=cov, survObj=survObj)
+	if (fecObj@distOffspring=="poisson")
+		u <- u*dpois(y,predict(fecObj@offspringRel,newdata=newd, type="response"))
+	if (fecObj@distOffspring=="negBin")
+		u <- u*dnbinom(y,mu=predict(fecObj@offspringRel,newdata=newd, type="response"),
+				size=fecObj@thetaOffspringSize)
+	
+	
+	return(u)
+}
+
+
+
+
+### CREATE DISCRETE F MATRIX
+createIntegerFmatrix <- function(fecObj,
+		nEnvClass = 1,
+		meshpoints=1:20,
+		chosenCov = data.frame(covariate=1),
+		preCensus=TRUE,
+		survObj=NULL,
+		growObj=NULL) {
+	
+	# boundary points b and mesh points y
+	y <- meshpoints;
+	nBigMatrix <- length(y)
+	
+	fecObj@fecConstants[is.na(fecObj@fecConstants)] <- 1
+	
+	tmp <- matrix(0,ncol=length(y),nrow=length(y))
+	
+	# 1. pre-census
+	if (preCensus) { 
+		##NOTE that the condition is necessary cos you might ONLY have discrete offspring
+		if (fecObj@offspringSplitter$continuous>0) { 
+			tmp <- t(outer(X=y,Y=y,.fecPreCensusInteger,cov=chosenCov,fecObj=fecObj))
+		}
+		##NOTE that the condition is necessary because you might ONLY have discrete offspring
+
+
+		# 2. post-census
+	} else {
+		# if no survObj is provided, it is assumed that all individuals survive to the time of breeding
+		if (is.null(survObj)) survObj <- makeSurvObj(data.frame(size=runif(21),surv=rep(1,21)),Formula=surv~size)
+		# if no growObj is provided, it is assumed that all individuals retain the same size until the time of breeding		
+		if (is.null(growObj)) growObj <- makeGrowthObj(data.frame(size=seq(21),sizeNext=seq(21)),Formula=sizeNext~size,Family="poisson")
+		#print ("Warning: in the current version of IPMpack, createIPMFmatrix still ignores the growObj you provided for your post-breeding F matrix. This will be included in a later version. Survival until breeding is already included in this version.")
+		##NOTE that the condition is necessary because you might ONLY have discrete offspring
+		# in which case correction makes no sense
+		if (fecObj@offspringSplitter$continuous>0) { 
+			tmp <- t(outer(X=y,Y=y,.fecPostCensusInteger,
+							cov=chosenCov,fecObj=fecObj, growObj=growObj,
+							survObj=survObj))
+		}
+
+		
+	}
+	
+	get.matrix <- to.cont <- tmp
+	
+	#discrete classes
+	nDisc <- length(fecObj@offspringSplitter)-1
+	namesDiscrete <- "NA"
+	if (nDisc>0) {
+		namesDiscrete <- colnames(fecObj@offspringSplitter[1:nDisc])
+		to.discrete <- matrix(0,nrow=nDisc,ncol=nBigMatrix)
+		for (i in 1:nDisc) {
+			if (length(which(fecObj@vitalRatesPerOffspringType[,namesDiscrete[i]]==1))>1) {
+				to.discrete[i,] <- apply(.fecRaw(x=y,cov=chosenCov,fecObj=fecObj)[[2]][which(fecObj@vitalRatesPerOffspringType[,namesDiscrete[i]]==1),],2,prod)*unlist(fecObj@offspringSplitter[namesDiscrete[i]])
+			} else {
+				to.discrete[i,] <- .fecRaw(x=y,cov=chosenCov,fecObj=fecObj)[[2]][which(fecObj@vitalRatesPerOffspringType[,namesDiscrete[i]]==1),]*unlist(fecObj@offspringSplitter[namesDiscrete[i]])
+			}
+		}
+		from.discrete <- matrix(0,ncol=nDisc,nrow=nDisc+nBigMatrix)
+		if (names(fecObj@fecByDiscrete)[1]!="NA.") {
+			if (sum(names(fecObj@fecByDiscrete)!=namesDiscrete)>0) stop ("Error - the names of the discrete classes as you provided for the data.frame fecByDiscrete are not 100% the same discrete class names in your data.frame offspringSplitter. They should also be in alphabetical order.")
+			for (j in 1:nDisc) {
+				for (i in 1:nDisc) {
+					from.discrete[i,j] <- unlist(fecObj@offspringSplitter[namesDiscrete[i]]*fecObj@fecByDiscrete[namesDiscrete[j]])
+				}
+			}
+			if (sum(fecObj@fecByDiscrete)>0&fecObj@offspringSplitter["continuous"]>0) {
+				print ("WARNING - number and sizes of offspring produced by individuals in discrete classes cannot be calculated yet. The Fmatrix contains zeros instead. Only solution at this point: change the F matrix yourself afterwards.")
+			}
+		}
+		get.matrix <- cbind(from.discrete,rbind(to.discrete,to.cont))
+	}
+	
+	#print(colSums(get.matrix))
+	
+	#warning about negative numbers
+	if (min(get.matrix)<0) { 
+		print("Warning: fertility values < 0 exist in matrix, consider transforms. Negative values set to zero") 
+		get.matrix[get.matrix<0] <- 0
+	}
+	
+	rc <- new("IPMmatrix",
+			nDiscrete = nDisc,
+			nEnvClass = 1, 
+			nBigMatrix = nBigMatrix,
+			nrow = 1*nBigMatrix+nDisc,
+			ncol =1*nBigMatrix+nDisc,
+			meshpoints = y,
+			env.index = rep(1:nEnvClass,each=nBigMatrix),
+			names.discrete=namesDiscrete)
+	rc[,] <-get.matrix   
+	
+	return(rc)
+}
+
 
 
 
@@ -1329,6 +1659,9 @@ diagnosticsPmatrix <- function (Pmatrix, growObj, survObj, dff=NULL,
 	#start plots - put original Pmatrix in black
 	#par(mfrow = c(3, 3), bty = "l")
 	
+	#save plot characters
+	old.par <- par(no.readonly = TRUE) 
+	
 	par(mfrow = c(1, 3), bty = "l",pty="s", mar=c(5,4,4,1))
 	if (!is.null(dff)) { 
 	xlims <- range(c(Pmatrix@meshpoints, Pmatrix1@meshpoints,
@@ -1412,7 +1745,11 @@ diagnosticsPmatrix <- function (Pmatrix, growObj, survObj, dff=NULL,
 			
 			ps <- surv(Pmat@meshpoints[loctest[j]], cov, survObj)
 			newd <- data.frame(size = Pmat@meshpoints[loctest[j]], 
-					size2 = Pmat@meshpoints[loctest[j]]^2, covariate = Pmat@env.index[1])
+					size2 = Pmat@meshpoints[loctest[j]]^2, 
+					size3 = Pmat@meshpoints[loctest[j]]^3, 
+					covariate = Pmat@env.index[1])
+			if (length(grep("expsize", names(growObj@fit$coefficients)))) 
+				newd$expsize = log(Pmat@meshpoints[loctest[j]])
 			if (length(grep("logsize", names(growObj@fit$coefficients)))) 
 				newd$logsize = log(Pmat@meshpoints[loctest[j]])
 			if (length(growObj@fit$model$covariate) > 0) 
@@ -1479,6 +1816,9 @@ diagnosticsPmatrix <- function (Pmatrix, growObj, survObj, dff=NULL,
 		}
 	}
 	
+	#reset plot characters
+	on.exit(par(old.par))
+	
 }
 
 
@@ -1495,6 +1835,11 @@ convergeLambda<-function(growObj, survObj, fecObj, nBigMatrix, minSize, maxSize,
 	
 	lambda.new<-1000
 	delta<-1000
+	
+	print(paste(c("delta: ","new lambda:", "New number of grid points:
+									"),collapse=""))
+	
+	
 	while(delta>tol) {
 		lambda.old <-lambda.new
 		nBigMatrix <- nBigMatrix + binIncrease
@@ -1510,13 +1855,14 @@ convergeLambda<-function(growObj, survObj, fecObj, nBigMatrix, minSize, maxSize,
 		lambda.new <- Re(eigen(IPM)$value[1])
 		
 		delta<-abs(lambda.new-lambda.old)
-		print(delta)
+		print(paste(c( delta, lambda.new,nBigMatrix),collapse=" "))
+		
 	}
 	
 	print(c("Final lambda from iteration:",lambda.new))
 	print(c("Number of bins:",nBigMatrix))
 	
-	output<-list(binIncrease=binIncrease,IPM=IPM,lambda=lambda.new)
+	output <- list(nBigMatrix = nBigMatrix, IPM = IPM, lambda = lambda.new)
 	
 	return(output)
 }
@@ -1528,6 +1874,10 @@ convergeR0<-function(growObj, survObj, fecObj, nBigMatrix, minSize, maxSize,
 	
 	R0.new<-1000
 	delta<-1000
+	
+	
+	print(paste(c("delta: ","new R0:", "New number of grid points:"),collapse=""))
+	
 	while(delta>tol) {
 		R0.old <-R0.new
 		nBigMatrix <- nBigMatrix + binIncrease
@@ -1542,7 +1892,7 @@ convergeR0<-function(growObj, survObj, fecObj, nBigMatrix, minSize, maxSize,
 		R0.new <- R0Calc(Pmatrix,Fmatrix)
 		
 		delta<-abs(R0.new-R0.old)
-		print(delta)
+		print(paste(c( delta, R0.new,nBigMatrix),collapse=" "))
 	}
 	
 	IPM <- Pmatrix + Fmatrix
@@ -1550,7 +1900,7 @@ convergeR0<-function(growObj, survObj, fecObj, nBigMatrix, minSize, maxSize,
 	print(c("Final R0 from iteration:",R0.new))
 	print(c("Number of bins:",nBigMatrix))
 	
-	output<-list(binIncrease=binIncrease,IPM=IPM,R0=R0.new)
+	output<-list(nBigMatrix = nBigMatrix, binIncrease=binIncrease,IPM=IPM,R0=R0.new)
 	
 	return(output)
 }
@@ -1564,6 +1914,10 @@ convergeLifeExpectancyFirstBin<-function(growObj, survObj,nBigMatrix, minSize, m
 	
 	LE.new<-1000
 	delta<-1000
+	
+	print(paste(c("delta: ","new LE:", "New number of grid points:"),collapse=""))
+	
+	
 	while(delta>tol) {
 		LE.old <- LE.new
 		nBigMatrix <- nBigMatrix + binIncrease
@@ -1575,13 +1929,13 @@ convergeLifeExpectancyFirstBin<-function(growObj, survObj,nBigMatrix, minSize, m
 		LE.new <- meanLifeExpect(Pmatrix)    
 		
 		delta <- abs(LE.new[1]-LE.old[1])
-		print(delta)
+		print(paste(c( delta, LE.new[1],nBigMatrix),collapse=" "))
 	}
 	
 	print(c("Final life expectancy of first bin from iteration:",LE.new[1]))
 	print(c("Number of bins:",nBigMatrix))
 	
-	output<-list(binIncrease=binIncrease,Pmatrix=Pmatrix,LE=LE.new)
+	output<-list(nBigMatrix = nBigMatrix, binIncrease=binIncrease,Pmatrix=Pmatrix,LE=LE.new)
 	
 	return(output)
 }
@@ -1593,6 +1947,9 @@ convergeLifeExpectancyLastBin<-function(growObj, survObj,nBigMatrix, minSize, ma
 	
 	LE.new<-1000
 	delta<-1000
+	
+	print(paste(c("delta: ","new LE:", "New number of grid points:"),collapse=""))
+	
 	while(delta>tol) {
 		LE.old <- LE.new
 		nBigMatrix <- nBigMatrix + binIncrease
@@ -1604,13 +1961,14 @@ convergeLifeExpectancyLastBin<-function(growObj, survObj,nBigMatrix, minSize, ma
 		LE.new <- meanLifeExpect(Pmatrix)    
 		
 		delta <- abs(LE.new[length(LE.new)]-LE.old[length(LE.old)])
-		print(delta)
+		print(paste(c( delta, LE.new[length(LE.new)],nBigMatrix),collapse=" "))
+		
 	}
 	
 	print(c("Final life expectancy of last bin from iteration:",LE.new[length(LE.old)]))
 	print(c("Number of bins:",nBigMatrix))
 	
-	output<-list(binIncrease=binIncrease,Pmatrix=Pmatrix,LE=LE.new)
+	output<-list(nBigMatrix = nBigMatrix,binIncrease=binIncrease,Pmatrix=Pmatrix,LE=LE.new)
 	
 	return(output)
 }
@@ -1768,7 +2126,6 @@ varPassageTime <- function(chosenSize,IPMmatrix){
 # returns - the life expectancy for each of the sizes in the IPM (columns)
 #           for each of the starting env states
 #
-# CURRENTLY NOT WORKING 
 #
 .stochLifeExpect <- function(IPMmatrix,envMatrix){
 	require(MASS)
@@ -1893,6 +2250,8 @@ stochPassageTime <- function(chosenSize,IPMmatrix,envMatrix){
 predictFutureDistribution <- function(startingSizes,IPM, n.time.steps, startingEnv=1) {
 	
 	# turn starting sizes into the resolution of the IPM bins
+	breakpoints <- c(IPM@meshpoints-(IPM@meshpoints[2]-IPM@meshpoints[1]),
+			IPM@meshpoints[length(IPM@meshpoints)]+(IPM@meshpoints[2]-IPM@meshpoints[1]))
 	
 	# setup slightly different for coompound or non compound dists
 	if (IPM@nEnvClass>1) {
@@ -1900,17 +2259,15 @@ predictFutureDistribution <- function(startingSizes,IPM, n.time.steps, startingE
 		compound <- TRUE
 		env.index <- IPM@env.index
 		n.new.dist <- rep(0,length(IPM[1,]))
-		for (ev in 1:IPM@nEnvClass) { 
-			index.new.dist <- findInterval(startingSizes[startingEnv==ev],IPM@meshpoints)+1
-			index.new.dist[index.new.dist>length(IPM@meshpoints)] <- length(IPM@meshpoints)
+		for (ev in 1:IPM@nEnvClass) { 			
+			index.new.dist <- findInterval(startingSizes[startingEnv==ev],breakpoints,all.inside=TRUE)
 			loc.sizes <- table(index.new.dist); 
 			n.new.dist[ev==IPM@env.index][as.numeric(names(loc.sizes))] <- loc.sizes
 		}
 		n.new.dist0 <- n.new.dist
 	} else {
 		compound <- FALSE
-		index.new.dist <- findInterval(startingSizes,IPM@meshpoints)+1
-		index.new.dist[index.new.dist>length(IPM@meshpoints)] <- length(IPM@meshpoints)
+		index.new.dist <- findInterval(startingSizes,breakpoints,all.inside=TRUE)
 		loc.sizes <- table(index.new.dist); 
 		env.index <- rep(1,length(IPM@meshpoints))
 		n.new.dist <- rep(0,length(IPM@meshpoints))
@@ -2107,7 +2464,8 @@ largeMatrixCalc <- function(Pmatrix, Fmatrix, tol = 1.e-8){
 ## the 
 ##
 ##
-sensParams <- function (growObj, survObj, fecObj, nBigMatrix, minSize, maxSize, 
+sensParams <- function (growObj, survObj, fecObj, nBigMatrix, minSize, maxSize,
+		chosenCov=data.frame(covariate=1),
 		discreteTrans = 1, integrateType = "midpoint", correction = "none", preCensus = TRUE, 
 		delta=1e-4) {
 	
@@ -2119,7 +2477,7 @@ sensParams <- function (growObj, survObj, fecObj, nBigMatrix, minSize, maxSize,
 						i, names(fecObj@fitFec[[i]]$coefficients)))
 	}
 	npar <- length(growObj@fit$coeff) + 1 + length(survObj@fit$coeff) + 
-			length(fecObj@offspringRel$coeff) + 1 + #addedÉ
+			length(fecObj@offspringRel$coeff) + 1 + 
 			(sum(!is.na(fecObj@fecConstants))) + nfec
 	elam <- rep(0, npar)
 	if ((sum(!is.na(fecObj@fecConstants))) > 0) {
@@ -2139,10 +2497,12 @@ sensParams <- function (growObj, survObj, fecObj, nBigMatrix, minSize, maxSize,
 	
 	
 	Pmatrix <- createIPMPmatrix(nBigMatrix = nBigMatrix, minSize = minSize, 
+			chosenCov = chosenCov,
 			maxSize = maxSize, growObj = growObj, survObj = survObj, 
 			discreteTrans = discreteTrans, integrateType = integrateType, 
 			correction = correction)
 	Fmatrix <- createIPMFmatrix(nBigMatrix = nBigMatrix, minSize = minSize, 
+			chosenCov = chosenCov,
 			maxSize = maxSize, fecObj = fecObj, integrateType = integrateType, 
 			correction = correction,preCensus = preCensus,survObj=survObj,growObj=growObj)
 	IPM <- Pmatrix + Fmatrix
@@ -2154,10 +2514,12 @@ sensParams <- function (growObj, survObj, fecObj, nBigMatrix, minSize, maxSize,
 				(1 + delta)
 		Pmatrix <- createIPMPmatrix(nBigMatrix = nBigMatrix, 
 				minSize = minSize, maxSize = maxSize, growObj = growObj, 
+				chosenCov = chosenCov,
 				survObj = survObj, discreteTrans = discreteTrans, 
 				integrateType = integrateType, correction = correction)
 		Fmatrix <- createIPMFmatrix(nBigMatrix = nBigMatrix, 
 				minSize = minSize, maxSize = maxSize, fecObj = fecObj, 
+				chosenCov = chosenCov,
 				integrateType = integrateType, correction = correction,
 				preCensus = preCensus,survObj=survObj,growObj=growObj)
 		IPM <- Pmatrix + Fmatrix
@@ -2173,10 +2535,12 @@ sensParams <- function (growObj, survObj, fecObj, nBigMatrix, minSize, maxSize,
 	growObj@sd <- growObj@sd * (1 + delta)
 	Pmatrix <- createIPMPmatrix(nBigMatrix = nBigMatrix, minSize = minSize, 
 			maxSize = maxSize, growObj = growObj, survObj = survObj, 
+			chosenCov = chosenCov,
 			discreteTrans = discreteTrans, integrateType = integrateType, 
 			correction = correction)
 	Fmatrix <- createIPMFmatrix(nBigMatrix = nBigMatrix, minSize = minSize, 
 			maxSize = maxSize, fecObj = fecObj, integrateType = integrateType, 
+			chosenCov = chosenCov,
 			correction = correction,preCensus = preCensus,survObj=survObj,growObj=growObj)
 	IPM <- Pmatrix + Fmatrix
 	lambda2 <- Re(eigen(IPM)$value[1])
@@ -2192,10 +2556,12 @@ sensParams <- function (growObj, survObj, fecObj, nBigMatrix, minSize, maxSize,
 		Pmatrix <- createIPMPmatrix(nBigMatrix = nBigMatrix, 
 				minSize = minSize, maxSize = maxSize, growObj = growObj, 
 				survObj = survObj, discreteTrans = discreteTrans, 
+				chosenCov = chosenCov,
 				integrateType = integrateType, correction = correction)
 		Fmatrix <- createIPMFmatrix(nBigMatrix = nBigMatrix, 
 				minSize = minSize, maxSize = maxSize, fecObj = fecObj, 
 				integrateType = integrateType, correction = correction,
+				chosenCov = chosenCov,
 				preCensus = preCensus,survObj=survObj,growObj=growObj)
 		IPM <- Pmatrix + Fmatrix
 		lambda2 <- Re(eigen(IPM)$value[1])
@@ -2212,11 +2578,13 @@ sensParams <- function (growObj, survObj, fecObj, nBigMatrix, minSize, maxSize,
 				(1 + delta)
 		Pmatrix <- createIPMPmatrix(nBigMatrix = nBigMatrix, 
 				minSize = minSize, maxSize = maxSize, growObj = growObj, 
+				chosenCov = chosenCov,
 				survObj = survObj, discreteTrans = discreteTrans, 
 				integrateType = integrateType, correction = correction)
 		Fmatrix <- createIPMFmatrix(nBigMatrix = nBigMatrix, 
 				minSize = minSize, maxSize = maxSize, fecObj = fecObj, 
 				integrateType = integrateType, correction = correction,
+				chosenCov = chosenCov,
 				preCensus = preCensus,survObj=survObj,growObj=growObj)
 		IPM <- Pmatrix + Fmatrix
 		lambda2 <- Re(eigen(IPM)$value[1])
@@ -2231,10 +2599,12 @@ sensParams <- function (growObj, survObj, fecObj, nBigMatrix, minSize, maxSize,
 	fecObj@sdOffspringSize <- fecObj@sdOffspringSize *  (1 + delta)
 	Pmatrix <- createIPMPmatrix(nBigMatrix = nBigMatrix, 
 			minSize = minSize, maxSize = maxSize, growObj = growObj, 
+			chosenCov = chosenCov,
 			survObj = survObj, discreteTrans = discreteTrans, 
 			integrateType = integrateType, correction = correction)
 	Fmatrix <- createIPMFmatrix(nBigMatrix = nBigMatrix, 
 			minSize = minSize, maxSize = maxSize, fecObj = fecObj, 
+			chosenCov = chosenCov,
 			integrateType = integrateType, correction = correction,
 			preCensus = preCensus,survObj=survObj,growObj=growObj)
 	IPM <- Pmatrix + Fmatrix
@@ -2255,10 +2625,12 @@ sensParams <- function (growObj, survObj, fecObj, nBigMatrix, minSize, maxSize,
 					(1 + delta)
 			Pmatrix <- createIPMPmatrix(nBigMatrix = nBigMatrix, 
 					minSize = minSize, maxSize = maxSize, growObj = growObj, 
+					chosenCov = chosenCov,
 					survObj = survObj, discreteTrans = discreteTrans, 
 					integrateType = integrateType, correction = correction)
 			Fmatrix <- createIPMFmatrix(nBigMatrix = nBigMatrix, 
 					minSize = minSize, maxSize = maxSize, fecObj = fecObj, 
+					chosenCov = chosenCov,
 					integrateType = integrateType, correction = correction,
 					preCensus = preCensus,survObj=survObj,growObj=growObj)
 			IPM <- Pmatrix + Fmatrix
@@ -2277,6 +2649,7 @@ sensParams <- function (growObj, survObj, fecObj, nBigMatrix, minSize, maxSize,
 					(1 + delta)
 			Fmatrix1 <- createIPMFmatrix(nBigMatrix = nBigMatrix, 
 					minSize = minSize, maxSize = maxSize, fecObj = fecObj, 
+					chosenCov = chosenCov,
 					integrateType = integrateType, correction = correction,
 					preCensus = preCensus,survObj=survObj,growObj=growObj)
 			IPM <- Pmatrix + Fmatrix1
@@ -2300,6 +2673,7 @@ sensParams <- function (growObj, survObj, fecObj, nBigMatrix, minSize, maxSize,
 
 sensParamsR0 <- function (growObj, survObj, fecObj, nBigMatrix, minSize, maxSize, 
 		discreteTrans = 1, integrateType = "midpoint", correction = "none", preCensus = TRUE, 
+		chosenCov = data.frame(covariate=1),
 		delta=1e-4) {
 	
 	nfec <- 0
@@ -2310,7 +2684,7 @@ sensParamsR0 <- function (growObj, survObj, fecObj, nBigMatrix, minSize, maxSize
 						i, names(fecObj@fitFec[[i]]$coefficients)))
 	}
 	npar <- length(growObj@fit$coeff) + 1 + length(survObj@fit$coeff) + 
-			length(fecObj@offspringRel$coeff) + 1 + #addedÉ
+			length(fecObj@offspringRel$coeff) + 1 + 
 			(sum(!is.na(fecObj@fecConstants))) + nfec
 	elam <- rep(0, npar)
 	if ((sum(!is.na(fecObj@fecConstants))) > 0) {
@@ -2331,10 +2705,12 @@ sensParamsR0 <- function (growObj, survObj, fecObj, nBigMatrix, minSize, maxSize
 	
 	Pmatrix <- createIPMPmatrix(nBigMatrix = nBigMatrix, minSize = minSize, 
 			maxSize = maxSize, growObj = growObj, survObj = survObj, 
+			chosenCov = chosenCov,
 			discreteTrans = discreteTrans, integrateType = integrateType, 
 			correction = correction)
 	Fmatrix <- createIPMFmatrix(nBigMatrix = nBigMatrix, minSize = minSize, 
 			maxSize = maxSize, fecObj = fecObj, integrateType = integrateType, 
+			chosenCov = chosenCov,
 			correction = correction,preCensus = preCensus,survObj=survObj,growObj=growObj)
 	
 	R01 <- R0Calc(Pmatrix,Fmatrix)
@@ -2345,9 +2721,11 @@ sensParamsR0 <- function (growObj, survObj, fecObj, nBigMatrix, minSize, maxSize
 				(1 + delta)
 		Pmatrix <- createIPMPmatrix(nBigMatrix = nBigMatrix, 
 				minSize = minSize, maxSize = maxSize, growObj = growObj, 
+				chosenCov = chosenCov,
 				survObj = survObj, discreteTrans = discreteTrans, 
 				integrateType = integrateType, correction = correction)
 		Fmatrix <- createIPMFmatrix(nBigMatrix = nBigMatrix, 
+				chosenCov = chosenCov,
 				minSize = minSize, maxSize = maxSize, fecObj = fecObj, 
 				integrateType = integrateType, correction = correction,
 				preCensus = preCensus,survObj=survObj,growObj=growObj)
@@ -2363,9 +2741,11 @@ sensParamsR0 <- function (growObj, survObj, fecObj, nBigMatrix, minSize, maxSize
 	growObj@sd <- growObj@sd * (1 + delta)
 	Pmatrix <- createIPMPmatrix(nBigMatrix = nBigMatrix, minSize = minSize, 
 			maxSize = maxSize, growObj = growObj, survObj = survObj, 
+			chosenCov = chosenCov,
 			discreteTrans = discreteTrans, integrateType = integrateType, 
 			correction = correction)
 	Fmatrix <- createIPMFmatrix(nBigMatrix = nBigMatrix, minSize = minSize, 
+			chosenCov = chosenCov,
 			maxSize = maxSize, fecObj = fecObj, integrateType = integrateType, 
 			correction = correction,preCensus = preCensus,survObj=survObj,growObj=growObj)
 	R02 <- R0Calc(Pmatrix,Fmatrix)
@@ -2380,10 +2760,12 @@ sensParamsR0 <- function (growObj, survObj, fecObj, nBigMatrix, minSize, maxSize
 				(1 + delta)
 		Pmatrix <- createIPMPmatrix(nBigMatrix = nBigMatrix, 
 				minSize = minSize, maxSize = maxSize, growObj = growObj, 
+				chosenCov = chosenCov,
 				survObj = survObj, discreteTrans = discreteTrans, 
 				integrateType = integrateType, correction = correction)
 		Fmatrix <- createIPMFmatrix(nBigMatrix = nBigMatrix, 
 				minSize = minSize, maxSize = maxSize, fecObj = fecObj, 
+				chosenCov = chosenCov,
 				integrateType = integrateType, correction = correction,
 				preCensus = preCensus,survObj=survObj,growObj=growObj)
 		R02 <- R0Calc(Pmatrix,Fmatrix)
@@ -2401,10 +2783,12 @@ sensParamsR0 <- function (growObj, survObj, fecObj, nBigMatrix, minSize, maxSize
 				(1 + delta)
 		Pmatrix <- createIPMPmatrix(nBigMatrix = nBigMatrix, 
 				minSize = minSize, maxSize = maxSize, growObj = growObj, 
+				chosenCov = chosenCov,
 				survObj = survObj, discreteTrans = discreteTrans, 
 				integrateType = integrateType, correction = correction)
 		Fmatrix <- createIPMFmatrix(nBigMatrix = nBigMatrix, 
 				minSize = minSize, maxSize = maxSize, fecObj = fecObj, 
+				chosenCov = chosenCov,
 				integrateType = integrateType, correction = correction,
 				preCensus = preCensus,survObj=survObj,growObj=growObj)
 		R02 <- R0Calc(Pmatrix,Fmatrix)
@@ -2419,10 +2803,12 @@ sensParamsR0 <- function (growObj, survObj, fecObj, nBigMatrix, minSize, maxSize
 	fecObj@sdOffspringSize <- fecObj@sdOffspringSize *  (1 + delta)
 	Pmatrix <- createIPMPmatrix(nBigMatrix = nBigMatrix, 
 			minSize = minSize, maxSize = maxSize, growObj = growObj, 
+			chosenCov = chosenCov,
 			survObj = survObj, discreteTrans = discreteTrans, 
 			integrateType = integrateType, correction = correction)
 	Fmatrix <- createIPMFmatrix(nBigMatrix = nBigMatrix, 
 			minSize = minSize, maxSize = maxSize, fecObj = fecObj, 
+			chosenCov = chosenCov,
 			integrateType = integrateType, correction = correction,
 			preCensus = preCensus,survObj=survObj,growObj=growObj)
 	R02 <- R0Calc(Pmatrix,Fmatrix)
@@ -2442,9 +2828,11 @@ sensParamsR0 <- function (growObj, survObj, fecObj, nBigMatrix, minSize, maxSize
 					(1 + delta)
 			Pmatrix <- createIPMPmatrix(nBigMatrix = nBigMatrix, 
 					minSize = minSize, maxSize = maxSize, growObj = growObj, 
+					chosenCov = chosenCov,
 					survObj = survObj, discreteTrans = discreteTrans, 
 					integrateType = integrateType, correction = correction)
 			Fmatrix <- createIPMFmatrix(nBigMatrix = nBigMatrix, 
+					chosenCov = chosenCov,
 					minSize = minSize, maxSize = maxSize, fecObj = fecObj, 
 					integrateType = integrateType, correction = correction,
 					preCensus = preCensus,survObj=survObj,growObj=growObj)
@@ -2463,6 +2851,7 @@ sensParamsR0 <- function (growObj, survObj, fecObj, nBigMatrix, minSize, maxSize
 					(1 + delta)
 			Fmatrix1 <- createIPMFmatrix(nBigMatrix = nBigMatrix, 
 					minSize = minSize, maxSize = maxSize, fecObj = fecObj, 
+					chosenCov = chosenCov,
 					integrateType = integrateType, correction = correction,
 					preCensus = preCensus,survObj=survObj,growObj=growObj)
 			R02 <- R0Calc(Pmatrix,Fmatrix)
@@ -2482,6 +2871,7 @@ sensParamsR0 <- function (growObj, survObj, fecObj, nBigMatrix, minSize, maxSize
 ## identical for LE ########################################################################
 
 sensParamsLifeExpect <- function (growObj, survObj, nBigMatrix, minSize, maxSize, 
+		chosenCov = data.frame(covariate=1),
 		discreteTrans = 1, integrateType = "midpoint", correction = "none", preCensus = TRUE, 
 		delta=1e-4,chosenBin=1) {
 	
@@ -2495,6 +2885,7 @@ sensParamsLifeExpect <- function (growObj, survObj, nBigMatrix, minSize, maxSize
 	
 	Pmatrix <- createIPMPmatrix(nBigMatrix = nBigMatrix, minSize = minSize, 
 			maxSize = maxSize, growObj = growObj, survObj = survObj, 
+			chosenCov = chosenCov,
 			discreteTrans = discreteTrans, integrateType = integrateType, 
 			correction = correction)
 	
@@ -2506,6 +2897,7 @@ sensParamsLifeExpect <- function (growObj, survObj, nBigMatrix, minSize, maxSize
 				(1 + delta)
 		Pmatrix <- createIPMPmatrix(nBigMatrix = nBigMatrix, 
 				minSize = minSize, maxSize = maxSize, growObj = growObj, 
+				chosenCov = chosenCov,
 				survObj = survObj, discreteTrans = discreteTrans, 
 				integrateType = integrateType, correction = correction)
 		LE2 <- meanLifeExpect(Pmatrix)[chosenBin]
@@ -2520,6 +2912,7 @@ sensParamsLifeExpect <- function (growObj, survObj, nBigMatrix, minSize, maxSize
 	growObj@sd <- growObj@sd * (1 + delta)
 	Pmatrix <- createIPMPmatrix(nBigMatrix = nBigMatrix, minSize = minSize, 
 			maxSize = maxSize, growObj = growObj, survObj = survObj, 
+			chosenCov = chosenCov,
 			discreteTrans = discreteTrans, integrateType = integrateType, 
 			correction = correction)
 	LE2 <- meanLifeExpect(Pmatrix)[chosenBin]
@@ -2534,6 +2927,7 @@ sensParamsLifeExpect <- function (growObj, survObj, nBigMatrix, minSize, maxSize
 				(1 + delta)
 		Pmatrix <- createIPMPmatrix(nBigMatrix = nBigMatrix, 
 				minSize = minSize, maxSize = maxSize, growObj = growObj, 
+				chosenCov = chosenCov,
 				survObj = survObj, discreteTrans = discreteTrans, 
 				integrateType = integrateType, correction = correction)
 		LE2 <- meanLifeExpect(Pmatrix)[chosenBin]
@@ -2547,7 +2941,8 @@ sensParamsLifeExpect <- function (growObj, survObj, nBigMatrix, minSize, maxSize
 
 ### sens params for discrete survival bit
 
-sensParamsDiscrete <-  function (growObj, survObj, fecObj, nBigMatrix, minSize, maxSize, 
+.sensParamsDiscrete <-  function (growObj, survObj, fecObj, nBigMatrix, minSize, maxSize, 
+		chosenCov = data.frame(covariate=1),		
 		discreteTrans = 1, integrateType = "midpoint", correction = "none", preCensus = TRUE, delta=1e-4) {
 	
 	
@@ -2574,9 +2969,11 @@ sensParamsDiscrete <-  function (growObj, survObj, fecObj, nBigMatrix, minSize, 
 	slam <- elam
 	Pmatrix <- createIPMPmatrix(nBigMatrix = nBigMatrix, minSize = minSize, 
 			maxSize = maxSize, growObj = growObj, survObj = survObj, 
+			chosenCov = chosenCov,
 			discreteTrans = discreteTrans, integrateType = integrateType, 
 			correction = correction)
 	Fmatrix <- createIPMFmatrix(nBigMatrix = nBigMatrix, minSize = minSize, 
+			chosenCov = chosenCov,
 			maxSize = maxSize, fecObj = fecObj, integrateType = integrateType, 
 			correction = correction,preCensus = preCensus,survObj=survObj,growObj=growObj)
 	IPM <- Pmatrix + Fmatrix
@@ -2596,7 +2993,7 @@ sensParamsDiscrete <-  function (growObj, survObj, fecObj, nBigMatrix, minSize, 
 			#pick element of matrix
 			adj <- rep(discreteTrans@discreteTrans[k,j]*delta,nrow(discreteTrans@discreteTrans)-1)
 			discreteTrans@discreteTrans[k,j] <- discreteTrans@discreteTrans[k,j] * (1 + delta)
-			#alter the other values in the columns so as continue to sum to oneÉ
+			#alter the other values in the columns so as continue to sum to one
 			if (sum(discreteTrans@discreteTrans[k,-j]>0)>0) adj <- adj/sum(discreteTrans@discreteTrans[k,-j]>0)
 			adj[discreteTrans@discreteTrans[-k,j]==0] <- 0
 			discreteTrans@discreteTrans[-k,j] <- discreteTrans@discreteTrans[-k,j]-adj
@@ -2606,11 +3003,13 @@ sensParamsDiscrete <-  function (growObj, survObj, fecObj, nBigMatrix, minSize, 
 			
 			Pmatrix <- createIPMPmatrix(nBigMatrix = nBigMatrix, 
 					minSize = minSize, maxSize = maxSize, growObj = growObj, 
+					chosenCov = chosenCov,
 					survObj = survObj, discreteTrans = discreteTrans, 
 					integrateType = integrateType, correction = correction)
 			
 			Fmatrix <- createIPMFmatrix(nBigMatrix = nBigMatrix, 
 					minSize = minSize, maxSize = maxSize, fecObj = fecObj, 
+					chosenCov = chosenCov,
 					integrateType = integrateType, correction = correction,
 					preCensus = preCensus,survObj=survObj,growObj=growObj)
 			
@@ -2633,10 +3032,12 @@ sensParamsDiscrete <-  function (growObj, survObj, fecObj, nBigMatrix, minSize, 
 		Pmatrix <- createIPMPmatrix(nBigMatrix = nBigMatrix, 
 				minSize = minSize, maxSize = maxSize, growObj = growObj, 
 				survObj = survObj, discreteTrans = discreteTrans, 
+				chosenCov = chosenCov,
 				integrateType = integrateType, correction = correction)
 		
 		Fmatrix <- createIPMFmatrix(nBigMatrix = nBigMatrix, 
 				minSize = minSize, maxSize = maxSize, fecObj = fecObj, 
+				chosenCov = chosenCov,
 				integrateType = integrateType, correction = correction,
 				preCensus = preCensus,survObj=survObj,growObj=growObj)
 		
@@ -2658,11 +3059,13 @@ sensParamsDiscrete <-  function (growObj, survObj, fecObj, nBigMatrix, minSize, 
 		
 		Pmatrix <- createIPMPmatrix(nBigMatrix = nBigMatrix, 
 				minSize = minSize, maxSize = maxSize, growObj = growObj, 
+				chosenCov = chosenCov,
 				survObj = survObj, discreteTrans = discreteTrans, 
 				integrateType = integrateType, correction = correction)
 		
 		Fmatrix <- createIPMFmatrix(nBigMatrix = nBigMatrix, 
 				minSize = minSize, maxSize = maxSize, fecObj = fecObj, 
+				chosenCov = chosenCov,
 				integrateType = integrateType, correction = correction,
 				preCensus = preCensus,survObj=survObj,growObj=growObj)
 		
@@ -2684,11 +3087,13 @@ sensParamsDiscrete <-  function (growObj, survObj, fecObj, nBigMatrix, minSize, 
 		
 		Pmatrix <- createIPMPmatrix(nBigMatrix = nBigMatrix, 
 				minSize = minSize, maxSize = maxSize, growObj = growObj, 
+				chosenCov = chosenCov,
 				survObj = survObj, discreteTrans = discreteTrans, 
 				integrateType = integrateType, correction = correction)
 		
 		Fmatrix <- createIPMFmatrix(nBigMatrix = nBigMatrix, 
 				minSize = minSize, maxSize = maxSize, fecObj = fecObj, 
+				chosenCov = chosenCov,
 				integrateType = integrateType, correction = correction,
 				preCensus = preCensus,survObj=survObj,growObj=growObj)
 		
@@ -2709,11 +3114,13 @@ sensParamsDiscrete <-  function (growObj, survObj, fecObj, nBigMatrix, minSize, 
 		
 		Pmatrix <- createIPMPmatrix(nBigMatrix = nBigMatrix, 
 				minSize = minSize, maxSize = maxSize, growObj = growObj, 
+				chosenCov = chosenCov,
 				survObj = survObj, discreteTrans = discreteTrans, 
 				integrateType = integrateType, correction = correction)
 		
 		Fmatrix <- createIPMFmatrix(nBigMatrix = nBigMatrix, 
 				minSize = minSize, maxSize = maxSize, fecObj = fecObj, 
+				chosenCov = chosenCov,
 				integrateType = integrateType, correction = correction,
 				preCensus = preCensus,survObj=survObj,growObj=growObj)
 		
@@ -2740,7 +3147,8 @@ sensParamsDiscrete <-  function (growObj, survObj, fecObj, nBigMatrix, minSize, 
 
 
 
-sensParamsDiscreteR0 <-  function (growObj, survObj, fecObj, nBigMatrix, minSize, maxSize, 
+.sensParamsDiscreteR0 <-  function (growObj, survObj, fecObj, nBigMatrix, minSize, maxSize, 
+		chosenCov = data.frame(covariate=1),
 		discreteTrans = 1, integrateType = "midpoint", correction = "none", preCensus = TRUE, delta=1e-4) {
 	
 	
@@ -2767,9 +3175,11 @@ sensParamsDiscreteR0 <-  function (growObj, survObj, fecObj, nBigMatrix, minSize
 	slam <- elam
 	Pmatrix <- createIPMPmatrix(nBigMatrix = nBigMatrix, minSize = minSize, 
 			maxSize = maxSize, growObj = growObj, survObj = survObj, 
+			chosenCov = chosenCov,
 			discreteTrans = discreteTrans, integrateType = integrateType, 
 			correction = correction)
 	Fmatrix <- createIPMFmatrix(nBigMatrix = nBigMatrix, minSize = minSize, 
+			chosenCov = chosenCov,
 			maxSize = maxSize, fecObj = fecObj, integrateType = integrateType, 
 			correction = correction,preCensus = preCensus,survObj=survObj,growObj=growObj)
 	R01 <- R0Calc(Pmatrix,Fmatrix)
@@ -2788,7 +3198,8 @@ sensParamsDiscreteR0 <-  function (growObj, survObj, fecObj, nBigMatrix, minSize
 			#pick element of matrix
 			adj <- rep(discreteTrans@discreteTrans[k,j]*delta,nrow(discreteTrans@discreteTrans)-1)
 			discreteTrans@discreteTrans[k,j] <- discreteTrans@discreteTrans[k,j] * (1 + delta)
-			#alter the other values in the columns so as continue to sum to oneÉ
+			#alter the other values in the columns so as continue to sum to one
+		
 			if (sum(discreteTrans@discreteTrans[k,-j]>0)>0) adj <- adj/sum(discreteTrans@discreteTrans[k,-j]>0)
 			adj[discreteTrans@discreteTrans[-k,j]==0] <- 0
 			discreteTrans@discreteTrans[-k,j] <- discreteTrans@discreteTrans[-k,j]-adj
@@ -2798,11 +3209,13 @@ sensParamsDiscreteR0 <-  function (growObj, survObj, fecObj, nBigMatrix, minSize
 			
 			Pmatrix <- createIPMPmatrix(nBigMatrix = nBigMatrix, 
 					minSize = minSize, maxSize = maxSize, growObj = growObj, 
+					chosenCov = chosenCov,
 					survObj = survObj, discreteTrans = discreteTrans, 
 					integrateType = integrateType, correction = correction)
 			
 			Fmatrix <- createIPMFmatrix(nBigMatrix = nBigMatrix, 
 					minSize = minSize, maxSize = maxSize, fecObj = fecObj, 
+					chosenCov = chosenCov,
 					integrateType = integrateType, correction = correction,
 					preCensus = preCensus,survObj=survObj,growObj=growObj)
 			
@@ -2823,11 +3236,13 @@ sensParamsDiscreteR0 <-  function (growObj, survObj, fecObj, nBigMatrix, minSize
 		
 		Pmatrix <- createIPMPmatrix(nBigMatrix = nBigMatrix, 
 				minSize = minSize, maxSize = maxSize, growObj = growObj, 
+				chosenCov = chosenCov,
 				survObj = survObj, discreteTrans = discreteTrans, 
 				integrateType = integrateType, correction = correction)
 		
 		Fmatrix <- createIPMFmatrix(nBigMatrix = nBigMatrix, 
 				minSize = minSize, maxSize = maxSize, fecObj = fecObj, 
+				chosenCov = chosenCov,
 				integrateType = integrateType, correction = correction,
 				preCensus = preCensus,survObj=survObj,growObj=growObj)
 		
@@ -2848,11 +3263,13 @@ sensParamsDiscreteR0 <-  function (growObj, survObj, fecObj, nBigMatrix, minSize
 		
 		Pmatrix <- createIPMPmatrix(nBigMatrix = nBigMatrix, 
 				minSize = minSize, maxSize = maxSize, growObj = growObj, 
+				chosenCov = chosenCov,
 				survObj = survObj, discreteTrans = discreteTrans, 
 				integrateType = integrateType, correction = correction)
 		
 		Fmatrix <- createIPMFmatrix(nBigMatrix = nBigMatrix, 
 				minSize = minSize, maxSize = maxSize, fecObj = fecObj, 
+				chosenCov = chosenCov,
 				integrateType = integrateType, correction = correction,
 				preCensus = preCensus,survObj=survObj,growObj=growObj)
 		
@@ -2873,11 +3290,13 @@ sensParamsDiscreteR0 <-  function (growObj, survObj, fecObj, nBigMatrix, minSize
 		
 		Pmatrix <- createIPMPmatrix(nBigMatrix = nBigMatrix, 
 				minSize = minSize, maxSize = maxSize, growObj = growObj, 
+				chosenCov = chosenCov,
 				survObj = survObj, discreteTrans = discreteTrans, 
 				integrateType = integrateType, correction = correction)
 		
 		Fmatrix <- createIPMFmatrix(nBigMatrix = nBigMatrix, 
 				minSize = minSize, maxSize = maxSize, fecObj = fecObj, 
+				chosenCov = chosenCov,
 				integrateType = integrateType, correction = correction,
 				preCensus = preCensus,survObj=survObj,growObj=growObj)
 		
@@ -2897,11 +3316,13 @@ sensParamsDiscreteR0 <-  function (growObj, survObj, fecObj, nBigMatrix, minSize
 		
 		Pmatrix <- createIPMPmatrix(nBigMatrix = nBigMatrix, 
 				minSize = minSize, maxSize = maxSize, growObj = growObj, 
+				chosenCov = chosenCov,
 				survObj = survObj, discreteTrans = discreteTrans, 
 				integrateType = integrateType, correction = correction)
 		
 		Fmatrix <- createIPMFmatrix(nBigMatrix = nBigMatrix, 
 				minSize = minSize, maxSize = maxSize, fecObj = fecObj, 
+				chosenCov = chosenCov,
 				integrateType = integrateType, correction = correction,
 				preCensus = preCensus,survObj=survObj,growObj=growObj)
 		

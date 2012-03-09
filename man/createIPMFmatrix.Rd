@@ -5,7 +5,7 @@
 Builds F matrices.
 }
 \description{
-Uses fecundity objects to construct a matrix defining per-capita contribution to recruitment stages (e.g., propagules [seed, spore], seedlings, calves) by reproductive stages due to sexual reproduction. Currently only pre-census fertility can be handled. 
+Uses fecundity objects to construct a matrix defining per-capita contribution to recruitment stages (e.g., propagules [seed, spore], seedlings, calves) by reproductive stages due to sexual reproduction. 
 }
 \usage{
 createIPMFmatrix(fecObj, nEnvClass = 1, nBigMatrix = 50, minSize = -1, 
@@ -39,10 +39,8 @@ createIPMFmatrix(fecObj, nEnvClass = 1, nBigMatrix = 50, minSize = -1,
     function); other option is "cumul" (which uses the cumulative density function)
   }
   \item{correction}{
-    correction type, defaults to "none"; option is "constant" which will
-    multiply every column of the IPM by a constant sufficient to adjust
-    values to those predicted for survival at that size. 
-  }
+ correction type, defaults to \code{none}. The first option is \code{constant} which will multiply every column of the IPM by a constant sufficient to adjust values to those predicted for total fertility at that size. The second option is \code{discretizeExtremes} which will place all transitions to sizes smaller than \code{minSize} into the smallest bin, and transitions to sizes larger than \code{maxSize} into the largest bin.  
+ }
   \item{preCensus}{
     logical (TRUE or FALSE), indicating whether the fecundity object should
     represent an interval between pre-breeding or a post-breeding censusses.
@@ -53,14 +51,17 @@ createIPMFmatrix(fecObj, nEnvClass = 1, nBigMatrix = 50, minSize = -1,
     of the parents until the reproduction event. 
   }
   \item{survObj}{
-    suvival object, describing the survival of parents from a census until 
-    the reproduction event starts (at some point during the inter-census time step. 
+    survival object, describing the survival of parents from a census until 
+    the reproduction event starts (at some point during the inter-census time 
+    step). If preCensus = FALSE but no survival object is provided, it is assumed
+    that all individuals survive to the breeding event.  
   }
   \item{growObj}{
     growth object, describing the growth of parents that survive until the 
     reproduction event starts. Warning: this growth object is still ignored in 
     createIPMFmatrix in the current version of IPMpack. It will become functional 
-    in coming versions.  
+    in coming versions. So far it is assumed that at time of breeding the individuals 
+    have the same size as at the beginning of the time interval.  
   }
  
 }
@@ -73,6 +74,8 @@ For information on F matrix: Caswell. 2001. Matrix population models: constructi
 For midpoint: Zuidema, Jongejans, Chien, During & Schieving. Integral projection models for trees: a new parameterization method and a validation of model output. Journal of Ecology 98, p345-355.
 
 For multiple-vital rate integration on fecundity: Yang, Jongejans, Yang & Bishop. 2011. The effect of consumers and mutualists of Vaccinum membranaceum at Mount St. Helens: dependence on successional context. PLoS One 10, p1-11.
+
+For information on unintentional eviction from IPMs (which the various corrections try and account for) see Williams et al. 2012 Avoiding unintentional eviction from integral projection models. Ecology.
 }
 \author{
 C. Jessica E. Metcalf, Sean M. McMahon, Roberto Salguero-Gomez & Eelke Jongejans.

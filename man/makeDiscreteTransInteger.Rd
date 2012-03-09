@@ -1,8 +1,8 @@
-\name{makeDiscreteTrans}
-\alias{makeDiscreteTrans}
+\name{makeDiscreteTransInteger}
+\alias{makeDiscreteTransInteger}
 %- Also NEED an '\alias' for EACH other topic documented here.
 \title{
-Builds matrix for transitions between discrete (e.g. seedbank, dormant) and continuous (e.g. size) stages.
+Builds matrix for transitions between discrete (e.g. seedbank, dormant) and continuous (e.g. size) stages, for situation where continuous variable is an integer. 
 }
 \description{
   Function that takes a data frame reflecting a population that includes continuous (e.g., size) and discrete (e.g., diapause)
@@ -11,7 +11,13 @@ Builds matrix for transitions between discrete (e.g. seedbank, dormant) and cont
   The dataframe must contain columns  "stage" and "stageNext" with values of the names of the discrete classes and the name "continuous" where appropriate, in the current and subsequent time step. Continuous categories are also defined by their measurements, contained in "size" and "sizeNext". This is necessary for defining the mean and variance of the continuous stage of individuals emerging from discrete stages. Alternatively, you can enter the transition matrix for the discrete stages in the 'discreteTrans' argument.
 }
 \usage{
-makeDiscreteTrans(dataf, stages = NA, discreteTrans = NA, meanToCont = NA, sdToCont = NA, continuousToDiscreteExplanatoryVariables = "size")
+makeDiscreteTransInteger(dataf, 
+		stages = NA,
+		discreteTrans = NA,
+		meanToCont = NA,
+		thetaToCont = NA,
+		continuousToDiscreteExplanatoryVariables = "size",
+		distToCont="poisson")
 }
 %- maybe also 'usage' for other objects documented here.
 \arguments{
@@ -19,12 +25,21 @@ makeDiscreteTrans(dataf, stages = NA, discreteTrans = NA, meanToCont = NA, sdToC
   \item{stages}{a character vector with the names of the discrete classes. Normally this argument does not have to be used as the names of discrete classes are extracted from the data or entered discreteTrans matrix.}
   \item{discreteTrans}{a matrix with transition probabilities between the discrete and continuous stages. The column names should match the stage/stageNext names in the data file. The names discrete stages should be in alphabetical order, followed by 'continuous'. The row names should be the same, but with 'dead' added at the bottom. Thus, this matrix represents all the fates of individuals from the various classes.}
   \item{meanToCont}{a matrix containing the mean sizeNext values for individuals moving from discrete classes to the continuous classes (should contain NA when no individuals move from a particular discrete class to a continuous sizeNext). The column names should be equal (in alphabetical order) to the names of the discrete classes (so no continuous).}
-  \item{sdToCont}{a matrix containing the sd sizeNext values for individuals moving from discrete classes to the continuous classes (should contain NA when no individuals move from a particular discrete class to a continuous sizeNext). The column names should be equal (in alphabetical order) to the names of the discrete classes (so no continuous).}
+  \item{thetaToCont}{a matrix containing the size parameter of sizeNext values for individuals moving from discrete classes to the continuous classes (should contain NA when no individuals move from a particular discrete class to a continuous sizeNext). The column names should be equal (in alphabetical order) to the names of the discrete classes (so no continuous).}
   \item{continuousToDiscreteExplanatoryVariables}{a character defining the relationship defining size influences the probability of individuals in the continuous class moving to any of the discrete classes. This argument is not relevant when individuals in the continuous stage cannot move into any discrete stage.}
+\item{distToCont}{
+character indicating the desired distribution of emergent sizes (poisson or negative binomial)
+}
+
 }
 \value{
-  an object of class "discreteTrans" with columns corresponding to all the discrete and the one continuous stage.
+  an object of class "discreteTransInteger" with columns corresponding to all the discrete and the one continuous stage.
 }
+
+\details{
+See help for makeDiscreteTrans; this is exactly analagous, except that it uses the poisson or negative binomial as descriptors for sizes on emergence from discrete stages
+}
+
 \references{
 Easterling, Ellner & Dixon. 2000. Size-specific sensitivity: a new structured population model. Ecology 81, p694-708.
 
@@ -39,32 +54,16 @@ C. Jessica E. Metcalf, Sean M. McMahon, Roberto Salguero-Gomez & Eelke Jongejans
 %% ~Make other sections like Warning with \section{Warning }{....} ~
 
 \seealso{
-\code{\link{createIPMPmatrix}}
+\code{\link{createIPMPmatrix}}, \code{\link{makeDiscreteTrans}}
+
 
 }
 \examples{
 dff <- generateDataDiscrete()
-discTrans <- makeDiscreteTrans(dff)
+dff$fec[dff$fec==0] <- NA
+dff$size <- pmax(floor(dff$size+10),0)
+dff$sizeNext <- pmax(floor(dff$sizeNext+10),0)
+discTrans <- makeDiscreteTransInteger(dff)
 createIPMPmatrix(nBigMatrix = 10, growObj = makeGrowthObj(dff), 
 	survObj = makeSurvObj(dff), discreteTrans = discTrans)
-	
-# Often some data needed for makeDiscreteTrans are not available as individual records in your data file. For instance the fate of seeds in the seedbank of the generateDataDiscrete() example:
-dff<-generateData()
-# Now the transition matrix needs to be entered as an argument, as well as the mean and sd of sizeNext values for discrete to continuous transitions. 
-discTrans <- makeDiscreteTrans(dff,
-					discreteTrans = matrix(c(.5,.1,.4,0,0,1),
-					nrow=3, ncol=2, dimnames = list(c("seedbank","continuous","dead"),
-					c("seedbank","continuous"))),
-					meanToCont = matrix(c(mean(dff$sizeNext[is.na(dff$stage)&dff$stageNext=="continuous"],na.rm=TRUE)),
-					nrow=1, ncol=1, dimnames = list(1,c("seedbank"))), 
-					sdToCont = matrix(c(sd(dff$sizeNext[is.na(dff$stage)&dff$stageNext=="continuous"],na.rm=TRUE)),
-					nrow=1, ncol=1, dimnames = list(1,c("seedbank"))))
-Pmatrix<-createIPMPmatrix(nBigMatrix = 10, growObj = makeGrowthObj(dff), 
-	survObj = makeSurvObj(dff), discreteTrans = discTrans)
-Fmatrix<-createIPMFmatrix(nBigMatrix = 10, fecObj = makeFecObj(dff))
-dim(Pmatrix)
-dim(Fmatrix)					
-# To fix this mismatch, all discrete classes (1 in this case) need to be added to the Fmatrix as well, e.g.:
-Fmatrix<-createIPMFmatrix(nBigMatrix = 10, fecObj = makeFecObj(dff, offspringSplitter=data.frame(seedbank=.3,continuous=.7)))
-IPM <- Pmatrix + Fmatrix	
 }

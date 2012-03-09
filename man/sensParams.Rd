@@ -14,11 +14,12 @@
 s
 }
 \usage{
-sensParams(growObj, survObj, fecObj, nBigMatrix, minSize, maxSize, discreteTrans = 1, integrateType = "midpoint", correction = "none", preCensus = TRUE, delta=1e-4)
+sensParams(growObj, survObj, fecObj, nBigMatrix, minSize, maxSize,  chosenCov = data.frame(covariate = 1),discreteTrans = 1, integrateType = "midpoint", correction = "none", preCensus = TRUE, delta=1e-4)
 
-sensParamsR0(growObj, survObj, fecObj, nBigMatrix, minSize, maxSize, discreteTrans = 1, integrateType = "midpoint", correction = "none", preCensus = TRUE, delta=1e-4)
+sensParamsR0(growObj, survObj, fecObj, nBigMatrix, minSize, maxSize, 
+discreteTrans = 1, integrateType = "midpoint", correction = "none", preCensus = TRUE, chosenCov = data.frame(covariate=1),delta=1e-4)
 
-sensParamsLifeExpect(growObj, survObj, nBigMatrix, minSize, maxSize, 
+sensParamsLifeExpect(growObj, survObj, nBigMatrix, minSize, maxSize,  chosenCov = data.frame(covariate = 1),
     discreteTrans = 1, integrateType = "midpoint", correction = "none", preCensus = TRUE, 
 	delta=1e-4,chosenBin=1)
 }
@@ -63,6 +64,9 @@ sensParamsLifeExpect(growObj, survObj, nBigMatrix, minSize, maxSize,
     for analysis of life expectancy, which bin in the IPM Life
     expectancy should be compared for
   }
+  \item{chosenCov}{
+level or value of the covariate(s) at which sensitivity estimation is desired
+  }
   }
 \value{
   \item{slam }{a vector of sensitivities of lambda with names
@@ -100,7 +104,7 @@ Modified following code developed by Rees & Rose 2002 (above).
 %% ~Make other sections like Warning with \section{Warning }{....} ~
 
 \seealso{
-\code{\link{sens}}, \code{\link{elas}}, \code{\link{sensParamsDiscrete}}
+\code{\link{sens}}, \code{\link{elas}}
 }
 \examples{
 dff <- generateData()

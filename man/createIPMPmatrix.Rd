@@ -45,9 +45,7 @@ integrateType = "midpoint", correction="none")
     function); other option is "cumul" (which uses the cumulative density function).
   }
   \item{correction}{
-    correction type, defaults to "none"; option is "constant" which will
-    multiply every column of the IPM by a constant sufficient to adjust
-    values to those predicted for survival at that size. 
+correction type, defaults to \code{none}. The first option is \code{constant} which will multiply every column of the IPM by a constant sufficient to adjust values to those predicted for survival at that size. The second option is \code{discretizeExtremes} which will place all transitions to sizes smaller than \code{minSize} into the smallest bin, and transitions to sizes larger than \code{maxSize} into the largest bin. 
   }
 }
 \details{
@@ -70,6 +68,8 @@ Easterling, Ellner & Dixon. 2000. Size-specific sensitivity: a new structured po
 Ellner & Rees. 2006. Integral projection models for species with complex demography. The American Naturalist 167, p410-428.
 
 For information on P matrix: Caswell. 2001. Matrix population models: construction, analysis, and interpretation. 2nd ed. Sinauer. p110-112.
+
+For information on unintentional eviction from IPMs (which the various corrections try and account for) see Williams et al. 2012 Avoiding unintentional eviction from integral projection models. Ecology.
 %% ~put references to the literature/web site here ~
 }
 \author{
@@ -87,9 +87,16 @@ Pmatrix <- createIPMPmatrix(minSize = min(dff$size, na.rm = TRUE),
 	maxSize=max(dff$size, na.rm=TRUE), growObj = makeGrowthObj(dff), 
 		survObj = makeSurvObj(dff))
 
-slotNames(Pmatrix)
+image(Pmatrix@meshpoints, Pmatrix@meshpoints, t(Pmatrix), 
+	xlab = "Continuous (e.g. size) stage at t", 
+		ylab = "Continuous (e.g. size) stage at t+1")
+
+Pmatrix <- createIPMPmatrix(minSize = min(dff$size, na.rm = TRUE), 
+	maxSize=max(dff$size, na.rm=TRUE), growObj = makeGrowthObj(dff,regType="declineVar"), 
+		survObj = makeSurvObj(dff))
 
 image(Pmatrix@meshpoints, Pmatrix@meshpoints, t(Pmatrix), 
 	xlab = "Continuous (e.g. size) stage at t", 
 		ylab = "Continuous (e.g. size) stage at t+1")
+
 }
