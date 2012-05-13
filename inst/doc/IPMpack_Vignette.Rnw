@@ -54,12 +54,14 @@ n(y, t+1) = \int\limits_{L}^{U} K(y, x) n(x, t) dx = \int\limits_{L}^{U}
 [T(y, ) + F(y, x)] n(x, t) dx
 \end{equation}
 
+where
+
 \begin{equation}
-n(y, t+1) = \int\limits_{L}^{U} T(y, x) n(x, t) dx = \int\limits_{L}^{U}surv(x)growth(y, x)dx    
+ \int\limits_{L}^{U} T(y, x) n(x, t) dx = \int\limits_{L}^{U}surv(x)growth(y, x)dx    
 \end{equation}
 
 \begin{equation}
-n(y, t+1) = \int\limits_{L}^{U} F(y, x) n(x, t) dx = \int\limits_{L}^{U}
+ \int\limits_{L}^{U} F(y, x) n(x, t) dx = \int\limits_{L}^{U}
 c_1 c_2 c_3 ... fec1(x)fec2(x)fec3(x)...f_d(y, x)dx     
 \end{equation}
 After numerically solving these kernels, key ecological and evolutionary quantities such as the population rate of increase $\lambda$, the stable population size structure, the net reproductive rate $R_0$, and many others can be estimated (see Caswell $2001$ for more a comprehensive discussion). 
@@ -393,7 +395,7 @@ sv1 <- makeSurvObjManyCov(dataf = dff,
                           explanatoryVariables = "size+covariate1+covariate3")
 gr1 <- makeGrowthObjManyCov(dataf = dff, 
                             explanatoryVariables = "size+covariate1+covariate2")
-fv1 <- makeFecObj(dataf = dff, fecConstants = 1.8, 
+fv1 <- makeFecObj(dataf = dff, fecConstants = data.frame(1.8), 
                   explanatoryVariables = "size", Transform = "log")
 @ 
 As before, the user can explore the data: 
@@ -506,7 +508,7 @@ names(res)
 @ 
 The vector called $\lambda$ and matrix called stableSize, etc, will consist of NAs, unless a list of Fmatrices is also provided, so that a complete population projection matrix can be built. IPMpack contains a similar function to obtain a list of F matrices, and if such a list is included as the third argument into the function {\tt getIPMOutput} (for which the default is `NULL'), the function will also return distributions of $\lambda$, the stable stage distribution, etc:  
 <<>>= 
-fv <- makePostFecObjs(dff, explanatoryVariables = "size+size2", fecConstants=0.01, 
+fv <- makePostFecObjs(dff, explanatoryVariables = "size+size2", fecConstants=data.frame(0.01), 
                       burnin=20,nitt = 40, Transform = "log")
 FmatrixList <- makeListFmatrix(fv, nBigMatrix = 20, minSize = -5, 
                                maxSize = 35, cov = FALSE,
