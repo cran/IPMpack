@@ -63,17 +63,17 @@ setGeneric("growthCum",
 ## GROWTH OBJECTS ##
 # Create a generic growth object containing a lm
 setClass("growthObj",
-		representation(fit = "lm"))
+		representation(fit = "lm",sd="numeric"))
 
 setClass("growthObjMultiCov",
-		representation(fit = "lm"))
+		representation(fit = "lm",sd="numeric"))
 
 # Create a generic growth object with normal errors on increment
 setClass("growthObjIncr",
-		representation(fit = "lm"))
+		representation(fit = "lm",sd="numeric"))
 
 setClass("growthObjMultiCovIncr",
-		representation(fit = "lm"))
+		representation(fit = "lm",sd="numeric"))
 
 # Create a generic growth object with truncated normal errors on increment
 setClass("growthObjTruncIncr",
@@ -81,10 +81,10 @@ setClass("growthObjTruncIncr",
 
 # Create a generic growth object with log normal errors on increment
 setClass("growthObjLogIncr",
-		representation(fit = "lm"))
+		representation(fit = "lm",sd="numeric"))
 
 setClass("growthObjMultiCovLogIncr",
-		representation(fit = "lm"))
+		representation(fit = "lm",sd="numeric"))
 
 # Create a generic growth object with declining errors 
 setClass("growthObjDeclineVar",
@@ -137,25 +137,25 @@ setClass("fecObj",
 				fecNames = "character",
 				fecConstants = "data.frame",
 				offspringSplitter = "data.frame",
-				meanOffspringSize = "numeric",
-				sdOffspringSize = "numeric",
 				fecByDiscrete = "data.frame",
 				offspringTypeRates = "data.frame",
-				Transform = "character")
+				Transform = "character",
+				offspringRel = "lm",
+				sdOffspringSize = "numeric")
 )
 
-# Create a generic fecundity object for multiple covariates
 setClass("fecObjMultiCov",
 		representation(fitFec = "list",
 				fecNames = "character",
 				fecConstants = "data.frame",
 				offspringSplitter = "data.frame",
-				meanOffspringSize = "numeric",
-				sdOffspringSize = "numeric",
 				fecByDiscrete = "data.frame",
 				offspringTypeRates = "data.frame",
-				Transform = "character")
+				Transform = "character",
+				offspringRel = "lm",
+				sdOffspringSize = "numeric")
 )
+
 
 
 
@@ -282,7 +282,7 @@ setMethod("growth",
 							growthObj@fit$formula))>0) { newd$logsize <- log(size)}
 			
 			mux <- predict(growthObj@fit,newd,type="response")
-			sigmax <- summary(growthObj@fit)$sigma
+			sigmax <-growthObj@sd
 			u <- dnorm(sizeNext,mux,sigmax,log=FALSE)  
 			return(u);
 		})
@@ -304,7 +304,7 @@ setMethod("growth",
 							growthObj@fit$formula))>0) newd$logsize2=(log(size))^2
 			
 			mux <- predict(growthObj@fit,newd,type="response")
-			sigmax <- summary(growthObj@fit)$sigma
+			sigmax <-growthObj@sd
 			u <- dnorm(sizeNext,mux,sigmax,log=FALSE)  
 			return(u);
 		})
@@ -324,7 +324,7 @@ setMethod("growth",
 			
 			#print(mux)
 			
-			sigmax <- summary(growthObj@fit)$sigma
+			sigmax <-growthObj@sd
 			u <- dnorm(sizeNext,size+mux,sigmax,log=FALSE)  
 			return(u); 
 		})
@@ -344,7 +344,7 @@ setMethod("growth",
 							names(growthObj@fit$coefficients)))>0) newd$logsize=log(size)
 						
 			mux <- .predictMuX(grObj=growthObj,newData=newd,covPred=cov)
-			sigmax <- sqrt(growthObj@fit$sigmax2)
+			sigmax <- growthObj@fit$sigma
 			u <- dtruncnorm(sizeNext,a=size,b=Inf,mean=size+mux,sd=sigmax)  
 			return(u); 
 		})
@@ -367,7 +367,7 @@ setMethod("growth",
 							growthObj@fit$formula))>0) newd$logsize2=(log(size))^2
 			
 			mux <- predict(growthObj@fit,newd,type="response")
-			sigmax <- summary(growthObj@fit)$sigma
+			sigmax <-growthObj@sd
 			u <- dnorm(sizeNext,size+mux,sigmax,log=FALSE)  
 			return(u);
 		})
@@ -384,7 +384,7 @@ setMethod("growth",
 							growthObj@fit$formula))>0) newd$logsize=log(size)
 			
 			mux <- predict(growthObj@fit,newd,type="response")
-			sigmax <- summary(growthObj@fit)$sigma
+			sigmax <-growthObj@sd
 			u <- dlnorm(sizeNext-size,mux,sigmax,log=FALSE)  
 			return(u);
 		})
@@ -500,7 +500,7 @@ setMethod("growth",
 							growthObj@fit$formula))>0) newd$logsize2=(log(size))^2
 			
 			mux <- predict(growthObj@fit,newd,type="response")
-			sigmax <- summary(growthObj@fit)$sigma
+			sigmax <-growthObj@sd
 			u <- dlnorm(sizeNext,size+mux,sigmax,log=FALSE)  
 			return(u);
 		})
@@ -548,7 +548,7 @@ setMethod("growthCum",
 			if (length(grep("logsize",
 							growthObj@fit$formula))>0) newd$logsize=log(size)
 			mux <- predict(growthObj@fit,newd,type="response")
-			sigmax <- summary(growthObj@fit)$sigma
+			sigmax <-growthObj@sd
 			u <- pnorm(sizeNext,mux,sigmax,log=FALSE)  
 			return(u);
 		})
@@ -564,7 +564,7 @@ setMethod("growthCum",
 							growthObj@fit$formula))>0) newd$logsize=log(size)
 			
 			mux <- predict(growthObj@fit,newd,type="response")
-			sigmax <- summary(growthObj@fit)$sigma
+			sigmax <-growthObj@sd
 			u <- pnorm(sizeNext,size+mux,sigmax,log=FALSE)  
 			return(u); 
 		})
@@ -584,7 +584,7 @@ setMethod("growthCum",
 							names(growthObj@fit$coefficients)))>0) newd$logsize=log(size)
 			
 			mux <- .predictMuX(grObj=growthObj,newData=newd,covPred=cov)
-			sigmax <- sqrt(growthObj@fit$sigmax2)
+			sigmax <- sqrt(growthObj@fit$sigmax)
 			
 			u <- ptruncnorm(sizeNext,a=size,b=Inf,mean=size+mux,sd=sigmax)  
 			return(u); 
@@ -602,7 +602,7 @@ setMethod("growthCum",
 							growthObj@fit$formula))>0) newd$logsize=log(size)
 			
 			mux <- predict(growthObj@fit,newd,type="response")
-			sigmax <- summary(growthObj@fit)$sigma
+			sigmax <-growthObj@sd
 			u <- plnorm(sizeNext-size,mux,sigmax,log=FALSE)  
 			return(u);
 		})
@@ -998,6 +998,86 @@ createCompoundTmatrix <- function(nEnvClass = 2,
 }
 
 
+## Extra functions for use with outer in building the IPMFmatrix
+
+## Get raw numbers of offspring produced by every size class by multiplying up the constants,
+## and doing all the "predict: values needed; and taking out only the babies that go to the continuous classes
+
+.fecRaw <- function(x,cov=1,fecObj) { 
+	
+	newd <- data.frame(size=x,size2=x^2,size3=x^3,covariate=as.factor(rep(cov,length(x))))
+	if (length(grep("logsize",
+					fecObj@offspringRel$formula))>0) { newd$logsize <- log(x)}            
+	
+	fecObj@fecConstants[is.na(fecObj@fecConstants)] <- 1
+	
+	#fecundity rates
+	fecValues <- matrix(c(rep(1,length(fecObj@fitFec)),unlist(fecObj@fecConstants)),
+			ncol=length(x),nrow=length(fecObj@fitFec)+
+					length(fecObj@fecConstants))
+	#rownames(fecValues) <- c(fecObj@fecNames,names(fecObj@fecConstants))
+	for (i in 1:length(fecObj@fitFec)) fecValues[i,] <- predict(fecObj@fitFec[[i]],newd,type="response")
+	if (length(grep("log",fecObj@Transform))>0) for (i in grep("log",fecObj@Transform)) fecValues[i,]<-exp(fecValues[i,])
+	if (length(grep("sqrt",fecObj@Transform))>0) for (i in grep("sqrt",fecObj@Transform)) fecValues[i,]<-(fecValues[i,])^2
+	if (length(grep("-1",fecObj@Transform))>0) for (i in grep("-1",fecObj@Transform)) fecValues[i,]<-fecValues[i,]+1
+	prodFecValues <- apply(fecValues[which(fecObj@offspringTypeRates[,"continuous"]==1),],2,prod)*unlist(fecObj@offspringSplitter["continuous"])
+	return(list(prodFecValues,fecValues))
+}
+
+
+## A function that outer can use showing numbers from x to y via production and distribution offspring
+.fecPreCensus <- function(x,y,cov=1,fecObj) {
+	newd <- data.frame(size=x,size2=x^2,size3=x^3,covariate=as.factor(rep(cov,length(x))))
+	if (length(grep("logsize",
+					fecObj@offspringRel$formula))>0) { newd$logsize <- log(x)}
+	u <- .fecRaw(x=x,cov=cov,fecObj=fecObj)[[1]]*
+			dnorm(y,predict(fecObj@offspringRel,newdata=newd, type="response"),
+					fecObj@sdOffspringSize)
+	
+	#print(cbind(y,predict(fecObj@offspringRel)))
+	
+	return(u)
+}
+
+## A function that outer can use showing numbers from x to y via production, growth, survival and distribution offspring
+#.fecPostCensus <- function(x,y,cov=1,fecObj, growObj,
+#		survObj) {
+#	newd <- data.frame(size=x,size2=x^2,size3=x^3,covariate=as.factor(rep(cov,length(x))))
+#	if (length(grep("logsize",fecObj@offspringRel$formula))>0 |
+#			length(grep("logsize",growObj@fit$formula))>0) { newd$logsize <- log(x)}            
+#	u <- .fecRaw(x=x,cov=cov,fecObj=fecObj)[[1]]*
+#			dnorm(y,predict(fecObj@offspringRel,newdata=newd, type="response"),fecObj@sdOffspringSize)*
+#			growSurv(size=x, sizeNext=y, cov=cov, growthObj=growObj,survObj=survObj)
+#	return(u)
+#}
+
+# TO DO .fecPostCensus properly (i.e. include size changes between the census and reproduction event) the following steps have to be made:
+# 1. use growSurv to determine what the distribution of size is at the reproduction event given initial size x
+# 2. over this distribution of sizes x2 at the reproduction event, what are the expected number of offspring: per x2: .fecRaw(x=x2,...)
+# 3. multiply the expected number of offspring per x2 with the probability that an offspring is of size y, using dnorm(y,predict(..., newdata=newd2, ...) where newd2 is calculated for all levels of x2
+# all in all, Eelke wonders if the outer-solution is still useful in the .fecPostCensus case, since x2 needs to have a certain distribution, which is not passed down to .fecPostCensus... 
+
+## REMOVE GROWTH FROM THIS - note that this means 
+#### growth obj generally not needed down below.....
+## A function that outer can use showing numbers from x to y via production, growth, survival and distribution offspring
+.fecPostCensus <- function(x,y,cov=1,fecObj, growObj,survObj) {
+	newd <- data.frame(size=x,size2=x^2,size3=x^3,covariate=as.factor(rep(cov,length(x))))
+	if (length(grep("logsize",fecObj@offspringRel$formula))>0 |
+			length(grep("logsize",growObj@fit$formula))>0) { newd$logsize <- log(x)}            
+	u <- .fecRaw(x=x,cov=cov,fecObj=fecObj)[[1]]*
+			dnorm(y,predict(fecObj@offspringRel,newdata=newd, type="response"),fecObj@sdOffspringSize)*
+   			surv(size=x, cov=cov, survObj=survObj)
+	return(u)
+}
+
+
+## A function that outer can use giving pnorm for offspring reprod
+.offspringCum <- function(x,y,cov=1,fecObj) {
+	newd <- data.frame(size=x,size2=x^2,size3=x^3,covariate=as.factor(rep(cov,length(x))))
+	if (length(grep("logsize",fecObj@offspringRel$formula))>0) { newd$logsize <- log(x)}            
+	u <- pnorm(y,predict(fecObj@offspringRel,newdata=newd, type="response"),fecObj@sdOffspringSize)
+	return(u)
+}
 
 
 #Function creates a single F.IPM (fecundity transitions only)
@@ -1024,7 +1104,10 @@ createIPMFmatrix <- function(fecObj,
 		maxSize = 50,
 		chosenCov = 1,
 		integrateType="midpoint",
-		correction="none") {
+		correction="none",
+		preCensus=TRUE,
+		survObj=NULL,
+		growObj=NULL) {
 	
 	# boundary points b and mesh points y
 	b<-minSize+c(0:nBigMatrix)*(maxSize-minSize)/nBigMatrix;
@@ -1040,29 +1123,61 @@ createIPMFmatrix <- function(fecObj,
 	
 	fecObj@fecConstants[is.na(fecObj@fecConstants)] <- 1
 	
-	#fecundity rates
-	fecValues <- matrix(c(rep(1,length(fecObj@fitFec)),unlist(fecObj@fecConstants)),
-			ncol=nBigMatrix,nrow=length(fecObj@fitFec)+
-					length(fecObj@fecConstants))
-	#rownames(fecValues) <- c(fecObj@fecNames,names(fecObj@fecConstants))
-	for (i in 1:length(fecObj@fitFec)) fecValues[i,] <- predict(fecObj@fitFec[[i]],newd,type="response")
-	if (length(grep("log",fecObj@Transform))>0) for (i in grep("log",fecObj@Transform)) fecValues[i,]<-exp(fecValues[i,])
-	if (length(grep("sqrt",fecObj@Transform))>0) for (i in grep("sqrt",fecObj@Transform)) fecValues[i,]<-(fecValues[i,])^2
-	if (length(grep("-1",fecObj@Transform))>0) for (i in grep("-1",fecObj@Transform)) fecValues[i,]<-fecValues[i,]+1
-	#fecValues[!is.finite(fecValues)] <- exp(200)
-	prodFecValues <- apply(fecValues[which(fecObj@offspringTypeRates[,"continuous"]==1),],2,prod)*unlist(fecObj@offspringSplitter["continuous"])
-	
-	#print(prodFecValues)	
-	
-	#Kids normal dist
-	tmp<-dnorm(y,fecObj@meanOffspringSize,(fecObj@sdOffspringSize))*h
-	if (integrateType=="cumul") { 
-		tmp1 <- dnorm(b,fecObj@meanOffspringSize,(fecObj@sdOffspringSize))
-		tmp <- tmp1[2:(nBigMatrix+1)]-tmp1[1:nBigMatrix]
+    # 1. pre-census
+	if (preCensus) { 
+		if (integrateType=="midpoint") { 
+			tmp <- t(outer(X=y,Y=y,.fecPreCensus,cov=chosenCov,fecObj=fecObj))*h 
+		}
+		if (integrateType=="cumul") {
+			#offspring extremes (pnorm) 
+			tmp.cum <- t(outer(X=y,Y=b,.offspringCum,cov=chosenCov,
+							fecObj=fecObj))
+			tmp <- tmp.cum[2:(nBigMatrix+1),]-tmp.cum[1:nBigMatrix,]
+			#put in seed production
+			tmp <- t(t(tmp)*.fecRaw(x=y,cov=chosenCov,fecObj=fecObj)[[1]])      
+		}
+		
+		if (correction=="constant") {
+			# in this case, column sums should equal raw fecundity
+			correction <-.fecRaw(x=y,cov=chosenCov,fecObj=fecObj)[[1]]/colSums(tmp)
+			tmp <- t(t(tmp)*correction)
+		}
+		
+	# 2. post-census
+	} else {
+		print ("Warning: in the current version of IPMpack, createIPMFmatrix still ignores the growObj you provided for your post-breeding F matrix. This will be included in a later version. Survival until breeding is already included in this version.")
+		if (integrateType=="midpoint") { 
+			tmp <- t(outer(X=y,Y=y,.fecPostCensus,
+							cov=chosenCov,fecObj=fecObj, growObj=growObj,
+							survObj=survObj))*h 
+		}
+		if (integrateType=="cumul") {
+			#make the extreme bins offspring matrix
+			tmp.cum <- t(outer(X=y,Y=b,.offspringCum,cov=chosenCov,
+							fecObj=fecObj))
+			tmpBabies <- tmp.cum[2:(nBigMatrix+1),]-tmp.cum[1:nBigMatrix,]
+			
+			#make the extreme bins growth matrix
+			tmp.cum <- t(outer(X=y,Y=b,growthCum,cov=chosenCov,
+							growObj=growObj))
+			tmpGrowth <- tmp.cum[2:(nBigMatrix+1),]-tmp.cum[1:nBigMatrix,]
+			tmpGrowth[nBigMatrix,nBigMatrix] <- tmpGrowth[nBigMatrix,nBigMatrix]+
+					(1-sum(tmpGrowth[,nBigMatrix]))
+			
+			#put in survival and seed production
+			tmp <- t(t(tmpBabies*tmpGrowth)*surv(size=y,cov=chosenCov,survObj=survObj)*.fecRaw(x=y,cov=chosenCov,fecObj=fecObj)[[1]])
+			
+		}
+		
+		if (correction=="constant") {
+			# in this case, column sums should equal raw fecundity * survival
+			correction <-.fecRaw(x=y,cov=chosenCov,fecObj=fecObj)[[1]]*surv(size=y,cov=chosenCov,survObj=survObj)/colSums(tmp)
+			tmp <- t(t(tmp)*correction)
+		}
+		
 	}
-	if (correction=="constant") tmp<-tmp/sum(tmp)
-	to.cont<-tmp%*%t(prodFecValues)
-	get.matrix <- to.cont
+	
+	get.matrix <- to.cont <- tmp
 	
 	#discrete classes
 	nDisc <- length(fecObj@offspringSplitter)-1
@@ -1070,12 +1185,14 @@ createIPMFmatrix <- function(fecObj,
 	if (nDisc>0) {
 		namesDiscrete <- colnames(fecObj@offspringSplitter[1:nDisc])
 		to.discrete <- matrix(NA,nrow=nDisc,ncol=nBigMatrix)
-		for (i in 1:nDisc) to.discrete[i,] <- apply(fecValues[which(fecObj@offspringTypeRates[,namesDiscrete[i]]==1),],2,prod)*unlist(fecObj@offspringSplitter[namesDiscrete[i]])
+		for (i in 1:nDisc) to.discrete[i,] <- apply(.fecRaw(x=y,cov=chosenCov,fecObj=fecObj)[[2]][which(fecObj@offspringTypeRates[,namesDiscrete[i]]==1),],2,prod)*unlist(fecObj@offspringSplitter[namesDiscrete[i]])
 		
 		from.discrete <- matrix(0,ncol=nDisc,nrow=nDisc+nBigMatrix)
 		if (names(fecObj@fecByDiscrete)[1]!="NA.") {
 			if (sum(names(fecObj@fecByDiscrete)!=namesDiscrete)>0) stop ("Error - the names of the discrete classes as you provided for the data.frame fecByDiscrete are not 100% the same discrete class names in your data.frame offspringSplitter. They should also be in alphabetical order.")
-			from.discrete <- c(as.numeric(fecObj@offspringSplitter)[1:nDisc],as.numeric(fecObj@offspringSplitter["continuous"])*tmp)%*%as.matrix(fecObj@fecByDiscrete)
+			if (sum(fecObj@fecByDiscrete)>0) {
+				print ("Warning - number and sizes of offspring produced by individuals in discrete classes cannot be calculated when offspring size is a function of parent size. The Fmatrix contains zeros instead. Only solution at this point: change the F matrix yourself afterwards.")
+			}
 		}
 		get.matrix <- cbind(from.discrete,rbind(to.discrete,to.cont))
 	}
@@ -1315,6 +1432,12 @@ diagnosticsTmatrix <- function(Tmatrix,growObj,survObj, dff, integrateType="midp
 			minSize = new.min, maxSize = 1.5*max(Tmatrix@meshpoints),
 			chosenCov = 1, growObj=growObj,survObj=survObj,
 			integrateType=integrateType, correction=correction)
+	if (sum(is.na(Tmatrix1))>0){ 
+		print("Tmatrix with extended size range returns NAs; changing these to 0, and putting survival value onto diagonal for columns that sum to zero")
+		Tmatrix1[is.na(Tmatrix1)] <- 0
+		bad <- which(colSums(Tmatrix1)==0, arr.ind=TRUE)
+		if (length(bad)>0) Tmatrix1[cbind(bad,bad)] <- surv(size=Tmatrix1@meshpoints[bad],cov=1,survObj=survObj)
+	}	
 	
 	#Is the size range sufficient? 
 	par(mfrow=c(2,3),bty="l")
@@ -1378,8 +1501,8 @@ diagnosticsTmatrix <- function(Tmatrix,growObj,survObj, dff, integrateType="midp
 		#define variance 
 		if (length(grep("decline",tolower(as.character(class(growObj)))))==0 & 
 				length(grep("trunc",tolower(as.character(class(growObj)))))==0) { 
-			sigmax2 <- summary(growObj@fit)$sigma^2 
-		} else { 
+			sigmax2 <-growObj@sd^2
+				} else { 
 			sigmax2 <- growObj@fit$sigmax2
 			var.exp.coef<-growObj@fit$var.exp.coef
 			sigmax2<-sigmax2*exp(2*(var.exp.coef*mux))
@@ -1990,8 +2113,8 @@ sensParams <- function(growObj,survObj,fecObj,
 	}
 	# change the variance in growth
 	param.test <- param.test+1
-	resids <- growObj@fit$residuals
-	growObj@fit$residuals <- rnorm(length(growObj@fit$residuals),0,sd(growObj@fit$residuals)*(1+delta))
+	sd.store <- growObj@sd
+	growObj@sd <- growObj@sd*(1+delta)
 	Tmatrix <- createIPMTmatrix(nBigMatrix = nBigMatrix, minSize=minSize,maxSize=maxSize,
 			growObj=growObj,survObj=survObj, discreteTrans=discreteTrans,
 			integrateType=integrateType, correction=correction)
@@ -1999,7 +2122,7 @@ sensParams <- function(growObj,survObj,fecObj,
 			fecObj=fecObj, integrateType=integrateType, correction=correction)
 	IPM <- Tmatrix + Fmatrix
 	lambda2 <- Re(eigen(IPM)$value[1]); #print(lambda2)
-	growObj@fit$residuals <- resids
+	growObj@sd <- sd.store
 	slam[param.test]<-(lambda2-lambda1)/(sd(growObj@fit$residuals)*delta);
 	elam[param.test]<-(lambda2-lambda1)/(log(1+delta));
 	

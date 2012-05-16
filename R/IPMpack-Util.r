@@ -82,7 +82,7 @@ getIPMoutputDirect <- function(survObjList,growObjList,targetSize=c(),
 	grow.par <- matrix(NA,nsamp,length(growObjList[[1]]@fit$coefficients)+1)
 	for (k in 1:nsamp) {
 		surv.par[k,] <- survObjList[[k]]@fit$coefficients
-		grow.par[k,] <- c(growObjList[[k]]@fit$coefficients,sd(growObjList[[k]]@fit$residuals))
+		grow.par[k,] <- c(growObjList[[k]]@fit$coefficients,growObjList[[k]]@sd)
 	}} else { surv.par <- grow.par <- c()}
 	
 	#set up storage
@@ -314,7 +314,8 @@ picGrow <- function(dataf,growObj) {
 			newd$logsize=(log(sizes))^2
 		
 		
-		if (length(grep("decline",tolower(as.character(class(growObj)))))>0) { 
+		if (length(grep("decline",tolower(as.character(class(growObj)))))>0 | 
+				length(grep("trunc",tolower(as.character(class(growObj)))))>0) { 
 				pred.size <- .predictMuX(growObj,newd,covPred=k)
 			} else  {
 				pred.size <- predict(growObj@fit,newd,type="response")	
@@ -375,7 +376,7 @@ generateData <- function(nSamp=1000){
 	#size <- exp(rnorm(1000, -1, 1.1))
 	sizeNext <- 1+0.8*size-0.9*covariate+rnorm(nSamp,0,1)
 	seedlings <- sample(1:nSamp,size=100,replace=TRUE)
-	size[seedlings] <- NA; sizeNext[seedlings] <- rnorm(100,-2,0.1)
+	size[seedlings] <- NA; sizeNext[seedlings] <- rnorm(100,2,0.5)
 	fec <- surv <- rep(NA, length(size))
 	surv[!is.na(size)] <- rbinom(sum(!is.na(size)),1,logit(-1+0.2*size[!is.na(size)]))
 	fec[!is.na(size)] <- rnorm(sum(!is.na(size)),exp(-7+0.9*size[!is.na(size)]),1)
@@ -791,7 +792,8 @@ growthModelComp <- function(dataf,
 		respType = "sizeNext",
 		testType = "AIC",
 		makePlot = FALSE,
-		mainTitle = "",...) {
+		mainTitle = "",
+		legendPos = "topright", ...) {
 	varN <- length(expVars)
 	typeN <- length(regressionType)
 	treatN <- varN * typeN
@@ -815,7 +817,7 @@ growthModelComp <- function(dataf,
 	
 	# PLOT SECTION #
 	if(makePlot == TRUE) {
-		plotGrowthModelComp(grObj = grObj, summaryTable = summaryTable, dataf = dataf, expVars = expVars, respType = respType, testType = "AIC",  plotLegend = TRUE, mainTitle = mainTitle,...)
+		plotGrowthModelComp(grObj = grObj, summaryTable = summaryTable, dataf = dataf, expVars = expVars, respType = respType, testType = "AIC",  plotLegend = TRUE, mainTitle = mainTitle, legendPos, ...)
 	}
 	return(outputList)
 }
@@ -825,7 +827,8 @@ survModelComp <- function(dataf,
 		expVars = c("1", "size", "size + size2"), 
 		testType = "AIC",
 		makePlot = FALSE,
-		mainTitle = "", ncuts = 20, ...) {
+		mainTitle = "", ncuts = 20,
+		legendPos = "bottomleft", ...) {
 	varN <- length(expVars)
 	treatN <- varN
 	summaryTable <- data.frame()
@@ -843,7 +846,7 @@ survModelComp <- function(dataf,
 	# PLOT SECTION #
 	if(makePlot == TRUE) {
 		## this is the surv picture    
-		plotSurvModelComp(svObj = svObj, summaryTable = summaryTable, dataf = dataf, expVars = expVars, testType = "AIC", plotLegend = TRUE, mainTitle = mainTitle, ncuts = ncuts,...)
+		plotSurvModelComp(svObj = svObj, summaryTable = summaryTable, dataf = dataf, expVars = expVars, testType = "AIC", plotLegend = TRUE, mainTitle = mainTitle, ncuts = ncuts, legendPos = legendPos, ...)
 	}
 	return(outputList)
 }	
@@ -851,7 +854,7 @@ survModelComp <- function(dataf,
 # Plot functions for model comparison.  Plots the series of fitted models for growth and survival objects.  
 # Can plot a legend with the model covariates and model test criterion scores (defaults to AIC).
 
-plotGrowthModelComp <- function(grObj, summaryTable, dataf, expVars, respType = "sizeNext", testType = "AIC", plotLegend = TRUE, mainTitle = "",...) {
+plotGrowthModelComp <- function(grObj, summaryTable, dataf, expVars, respType = "sizeNext", testType = "AIC", plotLegend = TRUE, mainTitle = "", legendPos = "topright", ...) {
 	treatN <- length(grObj)
 	sizeSorted <- unique(sort(dataf$size))
 	if(respType == "sizeNext") {
@@ -875,11 +878,11 @@ plotGrowthModelComp <- function(grObj, summaryTable, dataf, expVars, respType = 
 		lines(sizeSorted, pred.size, type = "l", col = (p + 1))
 	}
 	if(plotLegend) {
-		legend("topleft", legend = sprintf("%s: %s = %.1f", expVars, testType, as.numeric(as.character(summaryTable[,4]))), col = c(2:(p + 1)), lty = 1, xjust = 1)
+		legend(legendPos, legend = sprintf("%s: %s = %.1f", expVars, testType, as.numeric(as.character(summaryTable[,4]))), col = c(2:(p + 1)), lty = 1, xjust = 1, bg = "white")
 	}
 }
 
-plotSurvModelComp <- function(svObj, summaryTable, dataf,  expVars, testType = "AIC", plotLegend = TRUE, mainTitle = "", ncuts = 20, ...) {
+plotSurvModelComp <- function(svObj, summaryTable, dataf,  expVars, testType = "AIC", plotLegend = TRUE, mainTitle = "", ncuts = 20, legendPos = "bottomleft", ...) {
 	treatN <- length(svObj)
 	#ncuts <- 20  # survival bins
 	os <- order(dataf$size)  # order size
@@ -893,7 +896,7 @@ plotSurvModelComp <- function(svObj, summaryTable, dataf,  expVars, testType = "
 		lines(dataf$size[order(dataf$size)], surv(dataf$size[os], 1, svObj[[p]]), col = (p + 1))           
 	}
 	if(plotLegend) {
-		legend("bottomleft", legend = sprintf("%s: %s = %.1f", expVars, testType, as.numeric(as.character(summaryTable[,2]))), col = c(2:(p + 1)), lty = 1, xjust = 1)
+		legend(legendPos, legend = sprintf("%s: %s = %.1f", expVars, testType, as.numeric(as.character(summaryTable[,2]))), col = c(2:(p + 1)), lty = 1, xjust = 1, bg = "white")
 	}
 }
 

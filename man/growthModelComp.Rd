@@ -12,10 +12,10 @@ Returns a list containing a summary table of covariates and scores, and another 
 \usage{
 growthModelComp(dataf, expVars = c("1", "size", "size + size2"), 
 	regressionType = "constantVar", respType = "sizeNext", testType = "AIC", 
-		makePlot = FALSE, mainTitle = "",...)
+		makePlot = FALSE, mainTitle = "",legendPos = "topright",...)
 		
 survModelComp(dataf, expVars = c("1", "size", "size + size2"), testType = "AIC", 
-	makePlot = FALSE, mainTitle = "",ncuts=20,...)
+	makePlot = FALSE, mainTitle = "",ncuts=20, legendPos = "bottomleft", ...)
 }
 %- maybe also 'usage' for other objects documented here.
 \arguments{
@@ -42,6 +42,9 @@ survModelComp(dataf, expVars = c("1", "size", "size + size2"), testType = "AIC",
   }
   \item{ncuts}{
  for survModelComp, number of cuts in the data-set to be used in plotting
+ }	
+  \item{legendPos}{
+ for survModelComp, places legend.  Defaults to "topright".
   }
   \item{...}{
  	additional arguments for plotting (ylim, col, etc)
