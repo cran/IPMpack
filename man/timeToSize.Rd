@@ -44,16 +44,17 @@ Caswell, 2001. Matrix population models: analysis, construction and
 interpretation. 2nd ed. Sinauer. 
 }
 \author{
-C. Jessica E. Metcalf, Sean M. McMahon, Roberto Salguero-Gomez & Eelke Jongejans.
+C. Jessica E. Metcalf, Sean M. McMahon, Roberto Salguero-Gomez, Eelke Jongejans & Cory Merow.
 }
 
 %% ~Make other sections like Warning with \section{Warning }{....} ~
 
 \examples{
-#note that with the "fake data" essentially either takes forever or is immediate...
+#note that with the "fake data" essentially either takes 
+#forever or is immediate...
 dff <- generateData()
 startSizes <- rnorm(1000, 2.5, 1)
-Pmatrix <- createIPMPmatrix(minSize = 1.2*min(dff$size, na.rm=TRUE),
+Pmatrix <- makeIPMPmatrix(minSize = 1.2*min(dff$size, na.rm=TRUE),
 maxSize = 1.2*max(dff$size, na.rm=TRUE), 
 growObj = makeGrowthObj(dff), 
 survObj = makeSurvObj(dff))

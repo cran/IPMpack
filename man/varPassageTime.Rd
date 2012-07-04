@@ -36,18 +36,18 @@ For bias in this estimation where variance in growth is small relative to the si
 For species with shrinkage: Salguero-Gomez & Casper. 2010. Keeping shrinkage in the demographic loop. Journal of Ecology 98, p313-323.
 }
 \author{
-C. Jessica E. Metcalf, Sean M. McMahon, Roberto Salguero-Gomez & Eelke Jongejans.
+C. Jessica E. Metcalf, Sean M. McMahon, Roberto Salguero-Gomez, Eelke Jongejans & Cory Merow.
 }
 
 %% ~Make other sections like Warning with \section{Warning }{....} ~
 
 \seealso{
-\code{\link{passageTime}}, \code{\link{createIPMPmatrix}} 
+\code{\link{passageTime}}, \code{\link{makeIPMPmatrix}} 
 }
 \examples{
 # With continuous (e.g. size) stage
 dff <- generateData()
-Pmatrix <- createIPMPmatrix(minSize = min(dff$size, na.rm = TRUE),
+Pmatrix <- makeIPMPmatrix(minSize = min(dff$size, na.rm = TRUE),
 maxSize <- max(dff$size, na.rm = TRUE), growObj = makeGrowthObj(dff), 
 survObj = makeSurvObj(dff))
 targetSize <- 8

@@ -26,14 +26,14 @@ Horvitz, Ehrlen & Matlaga. 2010. Context-dependent pollinator limitation in stoc
 
 }
 \author{
-C. Jessica E. Metcalf, Sean M. McMahon, Roberto Salguero-Gomez & Eelke Jongejans.
+C. Jessica E. Metcalf, Sean M. McMahon, Roberto Salguero-Gomez, Eelke Jongejans & Cory Merow.
 }
 
 %% ~Make other sections like Warning with \section{Warning }{....} ~
 
 \seealso{
 \code{\link{makeFecObj}}, \code{\link{makeSurvObj}}, 
-\code{\link{createIPMPmatrix}}, \code{\link{createIPMFmatrix}}
+\code{\link{makeIPMPmatrix}}, \code{\link{makeIPMFmatrix}}
 
 }
 \examples{

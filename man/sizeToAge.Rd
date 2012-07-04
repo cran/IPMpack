@@ -40,7 +40,7 @@ See for bias in this estimation where variance in growth
 is small relative to the size range: Zuidema, Jongejans, Chien, During & Schieving. 2010. Integral Projection Models for trees: a new parameterization method and a validation of model output. Journal of Ecology 98, p345-355.
 }
 \author{
-C. Jessica E. Metcalf, Sean M. McMahon, Roberto Salguero-Gomez & Eelke Jongejans.
+C. Jessica E. Metcalf, Sean M. McMahon, Roberto Salguero-Gomez, Eelke Jongejans & Cory Merow.
 }
 
 %% ~Make other sections like Warning with \section{Warning }{....} ~
@@ -50,7 +50,7 @@ C. Jessica E. Metcalf, Sean M. McMahon, Roberto Salguero-Gomez & Eelke Jongejans
 }
 \examples{
 dff <- generateData()
-Pmatrix <- createIPMPmatrix(minSize = min(dff$size, na.rm = TRUE),
+Pmatrix <- makeIPMPmatrix(minSize = min(dff$size, na.rm = TRUE),
 maxSize = max(dff$size, na.rm = TRUE), growObj = makeGrowthObj(dff),
 survObj = makeSurvObj(dff))
 targetSize <- 8

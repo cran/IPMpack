@@ -14,7 +14,8 @@ plotGrowthModelComp(grObj,summaryTable, dataf, expVars,
 testType = "AIC", 
 plotLegend = TRUE, mainTitle = "", legendPos = "topright",...)
 
-plotSurvModelComp(svObj, summaryTable, dataf, expVars, testType = "AIC",  plotLegend = TRUE, mainTitle = "",ncuts=20, 
+plotSurvModelComp(svObj, summaryTable, dataf, expVars, 
+testType = "AIC",  plotLegend = TRUE, mainTitle = "",ncuts=20, 
 legendPos = "bottomleft",...) 
 }
 %- maybe also 'usage' for other objects documented here.
@@ -60,7 +61,7 @@ Plots multiple growth and survival objects returned from \code{growthModelComp} 
 a plot object.
 }
 \author{
-C. Jessica E. Metcalf, Sean M. McMahon, Roberto Salguero-Gomez & Eelke Jongejans.
+C. Jessica E. Metcalf, Sean M. McMahon, Roberto Salguero-Gomez, Eelke Jongejans & Cory Merow.
 }
 
 %% ~Make other sections like Warning with \section{Warning }{....} ~
@@ -74,10 +75,6 @@ dff <- generateData()
 
 grModels <- growthModelComp(dff, makePlot = FALSE)
 
-##TODO - NEEDS PROPER FORMULAS FOR LAST ARGUMENT
-#plotGrowthModelComp(grObj = grModels$growthObjects, 
-#summaryTable = grModels$summaryTable, dataf = dff, 
-# expVars = as.character(grModels$summaryTable[,1]))
 
 
 }

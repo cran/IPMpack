@@ -9,7 +9,7 @@
   to build survival objects for which methods to build an IPM  object are defined.
 }
 \usage{
-makeSurvObj(dataf,Formula=surv~size+size2)
+makeSurvObj(dataf,Formula=surv~size+size2, coeff=NULL)
 }
 %- maybe also 'usage' for other objects documented here.
 \arguments{
@@ -25,7 +25,8 @@ makeSurvObj(dataf,Formula=surv~size+size2)
     style, i.e. separated by `+', `*', `:'. Possible covariates include `size', 'size2' (size^2), `size3'
     (size^3),`logsize' (log(size)), `logsize2' (log(size)^2), and
     `covariate'. Response should be 'surv' to match \code{dataf}}
-}
+  \item{coeff}{numeric vector of required coefficients to be imposed if dataf is NULL; must be compatible with Formula}
+ }
 
 \value{
   An object of class survObj which is a S4 object which contains the slots: 
@@ -51,5 +52,8 @@ dff <- generateData()
 sv1 <- makeSurvObj(dff, Formula=surv~size)
 #assess fit for model with discrete environmental classes fitted
 sv1 <- makeSurvObj(dff, Formula=surv~size+covariate)
+
+#now specifying parameters and supplying no data
+sv1 <- makeSurvObj(Formula = surv ~ size + covariate,coeff=c(1,1,1))
 
 }

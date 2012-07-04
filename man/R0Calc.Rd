@@ -27,20 +27,21 @@ Caswell, 2001. Matrix population models: analysis, construction and
 interpretation. 2nd ed. Sinauer. p126.
 }
 \author{
-C. Jessica E. Metcalf, Sean M. McMahon, Roberto Salguero-Gomez & Eelke Jongejans.
+C. Jessica E. Metcalf, Sean M. McMahon, Roberto Salguero-Gomez, Eelke Jongejans & Cory Merow.
 }
 
 %% ~Make other sections like Warning with \section{Warning }{....} ~
 
 \seealso{
-\code{\link{createIPMPmatrix}},\code{\link{createIPMFmatrix}}  
+\code{\link{makeIPMPmatrix}},\code{\link{makeIPMFmatrix}}  
 }
 \examples{
 dff <- generateData()
-Pmatrix <- createIPMPmatrix(minSize = min(dff$size, na.rm = TRUE),
+Pmatrix <- makeIPMPmatrix(minSize = min(dff$size, na.rm = TRUE),
 maxSize = max(dff$size, na.rm = TRUE), growObj = makeGrowthObj(dff), 
 survObj = makeSurvObj(dff), correction="constant")
-Fmatrix <- createIPMFmatrix(minSize = min(dff$size, na.rm = TRUE),
-maxSize = max(dff$size, na.rm = TRUE), fecObj = makeFecObj(dff,Formula=fec~size), correction="constant")
+Fmatrix <- makeIPMFmatrix(minSize = min(dff$size, na.rm = TRUE),
+maxSize = max(dff$size, na.rm = TRUE), 
+fecObj = makeFecObj(dff,Formula=fec~size), correction="constant")
 R0Calc(Pmatrix, Fmatrix)
 }

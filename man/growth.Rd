@@ -38,7 +38,7 @@ Easterling, Ellner & Dixon. 2000. Size-specific sensitivity: a new structured po
 
 }
 \author{
-C. Jessica E. Metcalf, Sean M. McMahon, Roberto Salguero-Gomez & Eelke Jongejans.
+C. Jessica E. Metcalf, Sean M. McMahon, Roberto Salguero-Gomez, Eelke Jongejans & Cory Merow.
 }
 
 %% ~Make other sections like Warning with \section{Warning }{....} ~
@@ -54,6 +54,6 @@ sizeInit <- 1
 growth(sizeInit, sizeRange, data.frame(cov=1), gr1)
 plot(growth(sizeInit, sizeRange, data.frame(cov=1), gr1), type="l", 
 	col = "dark gray", xlab = "Continuous (e.g. size) stage at time t+1", 
-		ylab = paste("Probability of growth to a specific size in t+1 from size ", 
+	ylab = paste("Probability of growth to a specific size in t+1 from size ", 
 			sizeInit, " at time t"))
 }

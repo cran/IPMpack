@@ -37,7 +37,7 @@ For species with shrinkage: Salguero-Gomez & Casper. 2010. Keeping shrinkage in 
 
 }
 \author{
-C. Jessica E. Metcalf, Sean M. McMahon, Roberto Salguero-Gomez & Eelke Jongejans.
+C. Jessica E. Metcalf, Sean M. McMahon, Roberto Salguero-Gomez, Eelke Jongejans & Cory Merow.
 }
 
 %% ~Make other sections like Warning with \section{Warning }{....} ~
@@ -48,13 +48,14 @@ C. Jessica E. Metcalf, Sean M. McMahon, Roberto Salguero-Gomez & Eelke Jongejans
 \examples{
 # With a single continuous state variable (e.g. size)
 dff <- generateData()
-Pmatrix <- createIPMPmatrix(minSize = min(dff$size, na.rm = TRUE), 
+Pmatrix <- makeIPMPmatrix(minSize = min(dff$size, na.rm = TRUE), 
 maxSize = max(dff$size, na.rm = TRUE), growObj = makeGrowthObj(dff), 
 survObj = makeSurvObj(dff), correction="constant")
 targetSize <- 8
 passage <- passageTime(targetSize, Pmatrix)
 
-plot(Pmatrix@meshpoints, passage, ylab = "Passage time", xlab = "Continuous (e.g. size) stage", 
+plot(Pmatrix@meshpoints, passage, ylab = "Passage time", 
+ xlab = "Continuous (e.g. size) stage", 
 	type = "l", col = "dark gray", ylim = c(0, max(passage)), 
 	xlim=c(Pmatrix@meshpoints[1],targetSize+1))
 abline(v = targetSize, col="red")

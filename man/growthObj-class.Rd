@@ -2,8 +2,7 @@
 \Rdversion{1.1}
 \docType{class}
 \alias{growthObj-class}
-%\alias{growth,numeric,numeric,numeric,growthObj-method}
-%\alias{growthIntegrate,numeric,numeric,numeric,numeric,growthObj-method}
+
 
 \title{Class "growthObj"}
 \description{
@@ -26,7 +25,7 @@ Objects can be created by calls of the form \code{new("growthObj", ...)}.
 	 }
 }
 \author{
-C. Jessica E. Metcalf, Sean M. McMahon, Roberto Salguero-Gomez & Eelke Jongejans.
+C. Jessica E. Metcalf, Sean M. McMahon, Roberto Salguero-Gomez, Eelke Jongejans & Cory Merow.
 }
 
 %% ~Make other sections like Warning with \section{Warning }{....} ~

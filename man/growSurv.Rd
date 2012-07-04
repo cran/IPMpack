@@ -29,7 +29,7 @@ growSurv(size, sizeNext, cov, growthObj, survObj)
 }
 }
 \details{
-\code{createIPMPmatrix} and variants there-of apply \code{outer} to this function to efficiently obtain the IPM P matrix. 
+\code{makeIPMPmatrix} and variants there-of apply \code{outer} to this function to efficiently obtain the IPM P matrix. 
 }
 \value{
 numeric defining the pdf (probability density function).
@@ -38,7 +38,7 @@ numeric defining the pdf (probability density function).
 Easterling, Ellner & Dixon. 2000. Size-specific sensitivity: a new structured population model. Ecology 81, p694-708.
 }
 \author{
-C. Jessica E. Metcalf, Sean M. McMahon, Roberto Salguero-Gomez & Eelke Jongejans.
+C. Jessica E. Metcalf, Sean M. McMahon, Roberto Salguero-Gomez, Eelke Jongejans & Cory Merow.
 }
 \note{
 Code developed following Mark Rees, Dylan Childs & Karen Rose.
@@ -56,8 +56,9 @@ sv1 <- makeSurvObj(dff)
 sizeRange <- c(1:20)
 sizeInit <- 1
 growSurv(sizeInit, sizeRange, data.frame(covariate=1), gr1, sv1)
-plot(growSurv(sizeInit, sizeRange, data.frame(covariate=1), gr1, sv1), type="l", col = "dark gray", 
+plot(growSurv(sizeInit, sizeRange, data.frame(covariate=1), gr1, sv1), 
+    type="l", col = "dark gray", 
 	xlab = "Continuous (e.g. size) stage at time t+1", 
-		ylab = paste("Probability of survival to a specific size in t+1 from size ", 
+	ylab = paste("Probability of survival to a specific size in t+1 from size ", 
 			sizeInit, " at time t"))
 }

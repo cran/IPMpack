@@ -25,7 +25,7 @@ Zuidema, Jongejans, Chien, During & Schieving. 2010. Integral projection models 
 Rivas, Gonzalez, Gonzalez & von Gadow. 2004. Compatible height and site index models for five pine species in El Salto, Durango (Mexico). Forest Ecology and Management 201, p145-160.
 }
 \author{
-C. Jessica E. Metcalf, Sean M. McMahon, Roberto Salguero-Gomez & Eelke Jongejans.
+C. Jessica E. Metcalf, Sean M. McMahon, Roberto Salguero-Gomez, Eelke Jongejans & Cory Merow.
 }
 
 %% ~Make other sections like Warning with \section{Warning }{....} ~
@@ -35,6 +35,7 @@ dff <- generateData()
 sizeRange <- c(1:20)
 sizeInit <- 1
 Hossfeld(sizeRange, rep(1, 3))
-plot(Hossfeld(1:10, rep(1, 3)), type = "l", ylab = "Predicted increment from t to t+1", 
+plot(Hossfeld(1:10, rep(1, 3)), type = "l", 
+    ylab = "Predicted increment from t to t+1", 
 	xlab = "Continuous (size) stage in time t", col = "dark gray")
 }

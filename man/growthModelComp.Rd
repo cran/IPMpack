@@ -10,12 +10,16 @@ Compares growth and survival objects built from different covariate sets.
 Function compares model fits for growth and survival objects built with different linear combinations of covariates (plotting currently restricted to transforms of size; but comparison can include any chosen covariates).  Growth can have multiple response forms. 
 Returns a list containing a summary table of covariates and scores, and another list containing all of the growth (or survival) objects used in the comparison.}
 \usage{
-growthModelComp(dataf, expVars = c(sizeNext~1,  sizeNext~size, sizeNext~size + size2), 
+growthModelComp(dataf, 
+    expVars = c(sizeNext~1,  sizeNext~size, sizeNext~size + size2), 
 	regressionType = "constantVar",  testType = "AIC", 
-		makePlot = FALSE, mainTitle = "",legendPos = "topright",...)
+		makePlot = FALSE, mainTitle = "", plotLegend = TRUE, 
+		  legendPos = "topright",...)
 		
-survModelComp(dataf, expVars = c(surv~1,  surv~size, surv~size + size2), testType = "AIC", 
-	makePlot = FALSE, mainTitle = "",ncuts=20, legendPos = "bottomleft", ...)
+survModelComp(dataf, expVars = c(surv~1,  surv~size, surv~size + size2), 
+    testType = "AIC", 
+	makePlot = FALSE, mainTitle = "",ncuts=20, plotLegend = TRUE, 
+	   legendPos = "bottomleft", ...)
 }
 %- maybe also 'usage' for other objects documented here.
 \arguments{
@@ -40,8 +44,11 @@ survModelComp(dataf, expVars = c(surv~1,  surv~size, surv~size + size2), testTyp
   \item{ncuts}{
  for survModelComp, number of cuts in the data-set to be used in plotting
  }	
+  \item{plotLegend}{
+ logical whether to plot a legend.  Defaults to \code{FALSE}.
+  }
   \item{legendPos}{
- for survModelComp, places legend.  Defaults to "topright".
+ places legend.  Defaults to "topright".
   }
   \item{...}{
  	additional arguments for plotting (ylim, col, etc)
@@ -59,7 +66,7 @@ Plotting calls the functions \code{plotGrowthModelComp} or \code{plotSurvModelCo
   a list with a summary table of class \code{dataframe} with models and scores and list of containing the objects of class grObj and survObj for each model.
 }
 \author{
-C. Jessica E. Metcalf, Sean M. McMahon, Roberto Salguero-Gomez & Eelke Jongejans.
+C. Jessica E. Metcalf, Sean M. McMahon, Roberto Salguero-Gomez, Eelke Jongejans & Cory Merow.
 }
 
 %% ~Make other sections like Warning with \section{Warning }{....} ~
@@ -74,6 +81,6 @@ dff <- generateData()
 growthModelComp(dff, makePlot = TRUE)
 survModelComp(dff, makePlot = TRUE)
 
-growthModelComp(dff, makePlot = TRUE, regressionType = "declineVar")
+growthModelComp(dff, makePlot = TRUE, regressionType = "changingVar")
 
 }

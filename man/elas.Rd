@@ -31,7 +31,7 @@ de Kroon, Plaisier, van Groenendael & Caswell. 1986. Elasticity: the relative co
 de Kroon, van Groenendael & Ehrlen. 2000. Elasticities: a review of methods and model limitations. Ecology 81, p607-618.
 }
 \author{
-C. Jessica E. Metcalf, Sean M. McMahon, Roberto Salguero-Gomez & Eelke Jongejans.
+C. Jessica E. Metcalf, Sean M. McMahon, Roberto Salguero-Gomez, Eelke Jongejans & Cory Merow.
 }
 \note{
 Modified following code developed by Mark Rees & Dylan Childs
@@ -44,11 +44,11 @@ Modified following code developed by Mark Rees & Dylan Childs
 }
 \examples{
 dff <- generateData()
-Pmatrix <- createIPMPmatrix(minSize = min(dff$size, na.rm=TRUE),
+Pmatrix <- makeIPMPmatrix(minSize = min(dff$size, na.rm=TRUE),
 maxSize = max(dff$size, na.rm = TRUE), growObj = makeGrowthObj(dff),
 survObj = makeSurvObj(dff))
 
-Fmatrix <- createIPMFmatrix(minSize = min(dff$size, na.rm = TRUE),
+Fmatrix <- makeIPMFmatrix(minSize = min(dff$size, na.rm = TRUE),
 maxSize = max(dff$size, na.rm = TRUE), fecObj = makeFecObj(dff))
 
 IPM <- Pmatrix + Fmatrix

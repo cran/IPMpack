@@ -4,10 +4,12 @@
 
 %- Also NEED an '\alias' for EACH other topic documented here.
 \title{
-  Function to coerce growth or survival objects, i.e., impose user-defined parameters 
+  Function to coerce growth or survival objects, i.e., impose user-defined 
+  parameters 
 }
 \description{
-supplied with a growth and survival object, over-writes coefficients, and for growth, the sd of growth 
+Supplied with a growth and survival object, over-writes coefficients, and for 
+growth, the sd of growth 
 }
 \usage{
 
@@ -24,14 +26,15 @@ coerceSurvObj(survObj,coeff)
 }
   
 \details{
-  These functions can be used to impose coefficients and sd on growth and survival objects where direct fitting is not desired
+  These functions can be used to impose coefficients and sd on growth and 
+  survival objects where direct fitting is not desired
 }
 
 \value{
   an object of class growthObj / survObj
 }
 \author{
-C. Jessica E. Metcalf, Sean M. McMahon, Roberto Salguero-Gomez & Eelke Jongejans.
+C. Jessica E. Metcalf, Sean M. McMahon, Roberto Salguero-Gomez, Eelke Jongejans & Cory Merow.
 }
 
 %% ~Make other sections like Warning with \section{Warning }{....} ~
@@ -48,7 +51,9 @@ gr1 <- makeGrowthObj(dataf=dff,
 Formula=sizeNext~size,regType="constantVar")
 
 #halve the slope
-gr2 <- coerceGrowthObj(gr1,coeff=c(gr1@fit$coefficients[1],gr1@fit$coefficients[2]*0.5),sd=gr1@sd)
+gr2 <- coerceGrowthObj(gr1,coeff=c(gr1@fit$coefficients[1],
+    gr1@fit$coefficients[2]*0.5),
+    sd=gr1@sd)
 
 par(mfrow=c(1,2),pty="s")
 picGrow(dff,gr1)
@@ -59,7 +64,8 @@ sv1 <- makeSurvObj(dataf=dff,
 Formula=surv~size)
 
 #halve the slope
-sv2 <- coerceSurvObj(sv1,coeff=c(sv1@fit$coefficients[1],sv1@fit$coefficients[2]*0.5))
+sv2 <- coerceSurvObj(sv1,coeff=c(sv1@fit$coefficients[1],
+    sv1@fit$coefficients[2]*0.5))
 
 par(mfrow=c(1,2),pty="s")
 picSurv(dff,sv1)

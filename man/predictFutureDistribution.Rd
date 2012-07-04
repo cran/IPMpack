@@ -34,7 +34,7 @@ Currently this does not accept IPMs with discrete stages (e.g. seedbank).
  \item{n.new.dist}{final frequency distribution.}
 }
 \author{
-C. Jessica E. Metcalf, Sean M. McMahon, Roberto Salguero-Gomez & Eelke Jongejans.
+C. Jessica E. Metcalf, Sean M. McMahon, Roberto Salguero-Gomez, Eelke Jongejans & Cory Merow.
 }
 
 %% ~Make other sections like Warning with \section{Warning }{....} ~
@@ -46,15 +46,16 @@ startPop <- rnorm(1000,2,1)
 
 # Build T and F matrix
 dff <- generateData()
-Pmatrix <- createIPMPmatrix(minSize = 1.1*min(dff$size, na.rm = TRUE),
+Pmatrix <- makeIPMPmatrix(minSize = 1.1*min(dff$size, na.rm = TRUE),
 maxSize = 1.1*max(dff$size, na.rm = TRUE), growObj = makeGrowthObj(dff),
 survObj = makeSurvObj(dff), correction = "constant")
-Fmatrix <- createIPMFmatrix(minSize = 1.1*min(dff$size, na.rm = TRUE),
+Fmatrix <- makeIPMFmatrix(minSize = 1.1*min(dff$size, na.rm = TRUE),
 maxSize = 1.1*max(dff$size, na.rm = TRUE), 
 fecObj = makeFecObj(dff, fecConstants = data.frame(est=0.7), Transform="log"), 
 correction="constant")
 
-# Make an IPMmatrix object containing P matrix + F matrix by replacing the P matrix
+# Make an IPMmatrix object containing P matrix + F matrix 
+# by replacing the P matrix
 IPM <- Pmatrix
 IPM@.Data <- Pmatrix + Fmatrix
 

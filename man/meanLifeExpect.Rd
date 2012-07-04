@@ -33,23 +33,23 @@ environments. Life expectancy and survivorship. Ecology 87, p1497-1509.
 
 }
 \author{
-C. Jessica E. Metcalf, Sean M. McMahon, Roberto Salguero-Gomez & Eelke Jongejans.
+C. Jessica E. Metcalf, Sean M. McMahon, Roberto Salguero-Gomez, Eelke Jongejans & Cory Merow.
 }
 
 %% ~Make other sections like Warning with \section{Warning }{....} ~
 
 \seealso{
-\code{\link{createIPMPmatrix}} 
+\code{\link{makeIPMPmatrix}} 
 }
 \examples{
 # With a single continuous state variable (e.g. size):
 dff <- generateData()
-Pmatrix <- createIPMPmatrix(minSize = min(dff$size, na.rm = TRUE),
+Pmatrix <- makeIPMPmatrix(minSize = min(dff$size, na.rm = TRUE),
 maxSize = max(dff$size, na.rm = TRUE), growObj=makeGrowthObj(dff),
 survObj = makeSurvObj(dff))
 meanLifeExpect(Pmatrix)
 
-Pmatrix <- createIPMPmatrix(minSize = min(dff$size, na.rm = TRUE),
+Pmatrix <- makeIPMPmatrix(minSize = min(dff$size, na.rm = TRUE),
 maxSize = max(dff$size, na.rm = TRUE), growObj = makeGrowthObj(dff),
 survObj = makeSurvObj(dff))
 
@@ -58,22 +58,24 @@ xlab = "Continuous (e.g. size) stage", type = "l", col="dark gray",
 ylim = c(0,max(meanLifeExpect(Pmatrix))))
 
 # With continuous (e.g. size) and discrete (e.g. seedbank) stages:
-dff <- generateDataDiscrete()
+dff <- generateData(type="discrete")
 dff$covariate <- sample(1:3, size = nrow(dff), replace = TRUE)
 dff$covariateNext <- sample(1:3, size = nrow(dff), replace = TRUE)
 discM <- makeDiscreteTrans(dff)
-Pmatrix <- createCompoundPmatrix(minSize = min(dff$size, na.rm = TRUE), 
+Pmatrix <- makeCompoundPmatrix(minSize = min(dff$size, na.rm = TRUE), 
 maxSize = max(dff$size, na.rm = TRUE), envMatrix = makeEnvObj(dff),
 growObj = makeGrowthObj(dff, Formula = sizeNext~size+size2+covariate),
 survObj = makeSurvObj(dff, Formula = surv~size+size2+covariate), 
 discreteTrans = discM)
 mLE <- meanLifeExpect(Pmatrix)
 
-# showing three environments on different panels, life expectancy of discrete stages
+# showing three environments on different panels, 
+# life expectancy of discrete stages
 # shown at level of the first size class
 par(mfrow=c(max(Pmatrix@env.index),1))
 
-xvals <- c(rep(Pmatrix@meshpoints[1],ncol(discM@discreteTrans)-1),Pmatrix@meshpoints)
+xvals <- c(rep(Pmatrix@meshpoints[1],ncol(discM@discreteTrans)-1),
+    Pmatrix@meshpoints)
 
 for (k in 1:max(Pmatrix@env.index)) { 
 	indx <- ((k-1)*(ncol(discM@discreteTrans)-1+length(Pmatrix@meshpoints))+1):
