@@ -338,7 +338,7 @@ plot(Pmatrix@meshpoints, pTimes[1:Pmatrix@nBigMatrix],
 
 
 ###################################################
-### code chunk number 40: IPMpack_Vignette.Rnw:580-584
+### code chunk number 40: sampleSequentialIPMs
 ###################################################
 IPMlist <- sampleSequentialIPMs(dataf = dff, nBigMatrix = 25, minSize = -5, 
                         maxSize = 35, explSurv = surv~size+covariate, 
@@ -347,14 +347,104 @@ IPMlist <- sampleSequentialIPMs(dataf = dff, nBigMatrix = 25, minSize = -5,
 
 
 ###################################################
-### code chunk number 41: IPMpack_Vignette.Rnw:593-595
+### code chunk number 41: stochGrowth
 ###################################################
 stochGrowthRateSampleList(listIPMmatrix = IPMlist, 
                           nRunIn = 30, tMax = 50)
 
 
 ###################################################
-### code chunk number 42: IPMpack_Vignette.Rnw:609-616
+### code chunk number 42: IPMpack_Vignette.Rnw:611-613
+###################################################
+dff <- generateData()
+dff$covariate <- sample(c(1:4),nrow(dff),replace=TRUE)
+
+
+###################################################
+### code chunk number 43: IPMpack_Vignette.Rnw:619-624
+###################################################
+gr1 <- makeGrowthObj(dataf = dff,
+                     Formula=sizeNext~size+covariate,
+                     regType="constantVar",
+                     Family="gaussian")
+sv1 <- makeSurvObj(dff, Formula = surv~size+covariate)
+
+
+###################################################
+### code chunk number 44: IPMpack_Vignette.Rnw:628-633
+###################################################
+n.age.classes <- max(dff$covariate,na.rm=TRUE)
+ageMat <- new("envMatrix", nEnvClass = n.age.classes)
+ageMat@.Data <- matrix(0,n.age.classes,n.age.classes)
+ageMat@.Data[cbind(2:n.age.classes,1:(n.age.classes-1))] <- 1
+ageMat@.Data[n.age.classes,n.age.classes] <- 1
+
+
+###################################################
+### code chunk number 45: IPMpack_Vignette.Rnw:638-639
+###################################################
+print(ageMat)
+
+
+###################################################
+### code chunk number 46: IPMpack_Vignette.Rnw:644-651
+###################################################
+Pmatrix <- makeCompoundPmatrix(nBigMatrix = 50, minSize = -5,
+                               maxSize = 35,
+                               envMatrix = ageMat,
+							   nEnvClass = 4,
+                               growObj = gr1,
+                               survObj = sv1,
+                               correction = "constant")
+
+
+###################################################
+### code chunk number 47: figCompound
+###################################################
+image(Pmatrix[,],
+	xlab = "Continuous stage (e.g. size) at t",
+		ylab = "Continuous stage (e.g. size) at t+1", axes = FALSE)
+
+
+###################################################
+### code chunk number 48: IPMpack_Vignette.Rnw:674-677
+###################################################
+fv1 <- makeFecObj(dff, Formula = fec~size,
+                    Family = "gaussian",
+                    Transform = "log")
+
+
+###################################################
+### code chunk number 49: IPMpack_Vignette.Rnw:680-684
+###################################################
+n.age.classes <- max(dff$covariate,na.rm=TRUE)
+ageMat1 <- new("envMatrix", nEnvClass = n.age.classes)
+ageMat1@.Data <- matrix(0,n.age.classes,n.age.classes)
+ageMat1@.Data[1,2:n.age.classes] <- 1
+
+
+###################################################
+### code chunk number 50: IPMpack_Vignette.Rnw:687-693
+###################################################
+Fmatrix <- makeCompoundFmatrix(nBigMatrix = 50, minSize = -5,
+                               maxSize = 35,
+                               envMatrix = ageMat1,
+							   nEnvClass = 4,
+                               fecObj = fv1,
+                               correction = "constant")
+
+
+###################################################
+### code chunk number 51: figCompound
+###################################################
+IPM <- Pmatrix+Fmatrix
+image(log(IPM),
+	xlab = "Continuous stage (e.g. size) at t",
+		ylab = "Continuous stage (e.g. size) at t+1", axes = FALSE)
+
+
+###################################################
+### code chunk number 52: buildNew
 ###################################################
 dff <- generateData(type="stochastic")
 sv1 <- makeSurvObj(dataf = dff, 
@@ -366,19 +456,19 @@ fv1 <- makeFecObj(dataf = dff, fecConstants = data.frame(1.8),
 
 
 ###################################################
-### code chunk number 43: IPMpack_Vignette.Rnw:619-620
+### code chunk number 53: headDff
 ###################################################
 head(dff)
 
 
 ###################################################
-### code chunk number 44: IPMpack_Vignette.Rnw:623-624
+### code chunk number 54: grobj
 ###################################################
 gr1
 
 
 ###################################################
-### code chunk number 45: IPMpack_Vignette.Rnw:634-639
+### code chunk number 55: covTests
 ###################################################
 tVals <- seq(1, 4, by = 1/12)
 covTest <- c(1 + 0.5*sin(2*pi*tVals))
@@ -388,7 +478,7 @@ covMatTest <- data.frame(covariate1 = rnorm(length(covTest), covTest, 0.5) - 1,
 
 
 ###################################################
-### code chunk number 46: IPMpack_Vignette.Rnw:643-650
+### code chunk number 56: stochGROWTH
 ###################################################
 r <- stochGrowthRateManyCov(covariate = covMatTest, nRunIn = 12*1, 
                             tMax = length(tVals), growthObj = gr1, 
@@ -400,13 +490,13 @@ print(r)
 
 
 ###################################################
-### code chunk number 47: IPMpack_Vignette.Rnw:666-667
+### code chunk number 57: setClass
 ###################################################
 setClass("growthObjSaturate", representation(paras = "numeric", sd = "numeric"))
 
 
 ###################################################
-### code chunk number 48: IPMpack_Vignette.Rnw:670-675
+### code chunk number 58: fsat
 ###################################################
 fSaturate <- function(size, pars) { 
     u <- exp(pmin(pars[1] + pars[2] * size, 50))
@@ -416,7 +506,7 @@ fSaturate <- function(size, pars) {
 
 
 ###################################################
-### code chunk number 49: IPMpack_Vignette.Rnw:680-687
+### code chunk number 59: wrapSat
 ###################################################
 wrapSaturate <- function(par, dataf) { 
     pred <- fSaturate(dataf$size, par[1:3])
@@ -428,14 +518,14 @@ tmp
 
 
 ###################################################
-### code chunk number 50: IPMpack_Vignette.Rnw:692-694
+### code chunk number 60: residsSd
 ###################################################
 resids <- fSaturate(dff$size, tmp$par) - dff$sizeNext
 sdSaturate <- sd(resids, na.rm = TRUE)
 
 
 ###################################################
-### code chunk number 51: IPMpack_Vignette.Rnw:699-702
+### code chunk number 61: gr1new
 ###################################################
 gr1 <- new("growthObjSaturate")
 gr1@paras <- tmp$par
@@ -443,7 +533,7 @@ gr1@sd <- sdSaturate
 
 
 ###################################################
-### code chunk number 52: IPMpack_Vignette.Rnw:707-714
+### code chunk number 62: newmethod
 ###################################################
 setMethod("growth", c("numeric", "numeric", "numeric", "growthObjSaturate"), 
           function(size, sizeNext, cov, growthObj){

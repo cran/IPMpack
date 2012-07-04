@@ -36,8 +36,9 @@ makeGrowthObj <- function(dataf=NULL,
 	
 	if (!is.null(dataf)) { 
 	
-	dataf <- subset(dataf, is.na(dataf$size) == FALSE & is.na(dataf$sizeNext) == 
-					FALSE)
+	dataf <- subset(dataf, is.na(dataf$size) == FALSE)
+	
+	if (length(dataf$sizeNext)>0) dataf <- subset(dataf, is.na(dataf$sizeNext) == FALSE)
 	
 	
 	if (length(dataf$offspringNext) > 0) 
@@ -95,7 +96,6 @@ makeGrowthObj <- function(dataf=NULL,
 			fit <- lm(Formula, data=dataf)
 		} else { 
 			if (regType == "changingVar"){
-				library(nlme)
 				fit.here <- gls(Formula, na.action = na.omit, weights = varExp(form =  ~fitted(.)), data = dataf)
 				fit <- list(coefficients = fit.here$coefficients,
 						sigmax2 = summary(fit.here)$sigma^2,
@@ -243,7 +243,6 @@ makeOffspringObj <- function(dataf=NULL,
 				fit <- lm(Formula, data=dataf)
 			} else { 
 				if (regType == "changingVar"){
-                    library(nlme)
 					fit.here <- gls(Formula, na.action = na.omit, weights = varExp(form =  ~fitted(.)), data = dataf)
 					fit <- list(coefficients = fit.here$coefficients,
 							sigmax2 = summary(fit.here)$sigma^2,

@@ -17,7 +17,7 @@
 .generateDataDiscrete <- function(nSamp=1000){
   size <- rnorm(nSamp,5,2)
   sizeNext <- 1+0.8*size+rnorm(nSamp,0,1)
-  surv <- rbinom(nSamp,1,logit(-1+0.2*size))
+  surv <- rbinom(nSamp,1,invLogit(-1+0.2*size))
   sizeNext[surv==0] <- NA
   fec <- rnorm(length(size),exp(-7+0.9*size),1)
   fec[size<quantile(size,0.20) | fec<0] <- 0
@@ -59,7 +59,7 @@
   sizeNext <- 1+0.9*size+3*covariate1+0.01*covariate2+0.2*covariate3+rnorm(nSamp,0,0.1)
   
   fec <- surv <- rep(NA, length(size))
-  surv[!is.na(size)] <- rbinom(sum(!is.na(size)),1,logit(-1+0.2*size[!is.na(size)]))
+  surv[!is.na(size)] <- rbinom(sum(!is.na(size)),1,invLogit(-1+0.2*size[!is.na(size)]))
   fec[!is.na(size)] <- rnorm(sum(!is.na(size)),exp(-7+0.9*size[!is.na(size)]),1)
   fec[size<quantile(size,0.20,na.rm=TRUE) | fec<0] <- 0
   fec <- 10*fec
@@ -69,7 +69,7 @@
   sizeNext[seedlings] <- rnorm(100,-2,0.1)
   surv[seedlings] <- 1
   #set to flower when covariate1 is around 1.5
-  pfec <- 1*(runif(length(size))<logit(size+covariate1)); #print(pfec)
+  pfec <- 1*(runif(length(size))<invLogit(size+covariate1)); #print(pfec)
   fec[pfec==0] <- 0
   #fill in stage
   stage <- stageNext <- rep("continuous",nSamp)
@@ -266,7 +266,6 @@
 .getListRegObjects <- function(Obj,nsamp=1000) {
   
   require(mvtnorm)
-  require(MASS)
   
   #generate new set parameters from mvn
   npar <- length(Obj@fit$coefficients)
@@ -289,7 +288,6 @@
 .getListRegObjectsFec <- function(Obj,nsamp=1000) {
   
   require(mvtnorm)
-  require(MASS)
   
   objList <- list()
   
@@ -976,7 +974,6 @@
 #
 #
 .stochLifeExpect <- function(IPMmatrix,envMatrix){
-  require(MASS)
   
   matrix.dim <- length(IPMmatrix[1,])
   nstages <- IPMmatrix@nBigMatrix
@@ -1257,7 +1254,7 @@
   dataf$surv <- sample(c(0,1),nrow(dataf), replace=TRUE)
   
   if (sum(Transform=="log")>0) dataf[,fecNames[which(Transform=="log")]] <- pmax(dataf[,fecNames[which(Transform=="log")]],1)
-  if (sum(Family=="binomial")>0) ddataf[,fecNames[which(Family=="binomial")]] <- rbinom(nrow(dataf),1,0.5)
+  if (sum(Family=="binomial")>0) dataf[,fecNames[which(Family=="binomial")]] <- rbinom(nrow(dataf),1,0.5)
   
   fv1 <- makeFecObj(dataf=dataf, 
       fecConstants = fecConstants, 

@@ -15,7 +15,8 @@
 #   cov - the covariate (light, etc) this time-step
 #   grow.obj - the growth object 
 #
-#   Note "growth" takes a SINGLE value for covariate although can take a VECTOR for size,sizeNext
+#   Note "growth" takes a SINGLE value for covariate although can take a VECTOR 
+#   for size,sizeNext
 #
 #
 # Returns -
@@ -31,7 +32,8 @@ setGeneric("growth",
 #   cov - the covariate (light env, etc)
 #   surv.obj - the survival object
 #
-#   Note "surv" takes a SINGLE value for covariate although can take a VECTOR for size
+#   Note "surv" takes a SINGLE value for covariate although can take a VECTOR 
+#   for size
 #
 #Returns -
 #  The survival probability at size
@@ -47,7 +49,8 @@ setGeneric("surv",
 #   cov - the covariate (light, etc) this time-step
 #   grow.obj - the growth object 
 #
-#   Note "growth" takes a SINGLE value for covariate although can take a VECTOR for size,sizeNext
+#   Note "growth" takes a SINGLE value for covariate although can take a VECTOR 
+#   for size,sizeNext
 #
 #
 # Returns -
@@ -61,14 +64,14 @@ setGeneric("growthCum",
 ## GROWTH OBJECTS ##
 # Create a generic growth object containing a lm
 setClass("growthObj",
-    representation(fit = "lm",sd="numeric"))
+    representation(fit = "lm", sd = "numeric"))
 
 setClass("growthObjPois",
     representation(fit = "glm"))
 
 # Create a generic growth object with normal errors on increment
 setClass("growthObjIncr",
-    representation(fit = "lm",sd="numeric"))
+    representation(fit = "lm", sd = "numeric"))
 
 # Create a generic growth object with truncated normal errors on increment
 setClass("growthObjTruncIncr",
@@ -76,7 +79,7 @@ setClass("growthObjTruncIncr",
 
 # Create a generic growth object with log normal errors on increment
 setClass("growthObjLogIncr",
-    representation(fit = "lm",sd="numeric"))
+    representation(fit = "lm", sd = "numeric"))
 
 # Create a generic growth object with declining errors 
 setClass("growthObjDeclineVar",
@@ -174,11 +177,11 @@ setClass("discreteTransInteger",
 
 
 
-######## DEFINE METHODS ##########################################################################################
-
+######## DEFINE METHODS #######################################################
 # =============================================================================
 # =============================================================================
-#Method to obtain probability of survival using
+# SURVIVAL METHODS
+# Method to obtain probability of survival using
 # logistic regression on size with a single covariate
 #
 #Parameters -
@@ -213,7 +216,7 @@ setMethod("surv",
 
 # =============================================================================
 # =============================================================================
-#Method to obtain probability of survival using
+# Method to obtain probability of survival using
 # logistic regression on size with a single covariate
 #  where the logistic regression was modeled with over-dispersion
 #  (e.g., using MCMCglmm) - !over-dispersion assumed to be set to 1
@@ -241,13 +244,14 @@ setMethod("surv",
               survObj@fit$formula))>0) newd$logsize2=(log(size))^2
       
       u <- predict(survObj@fit,newd,type="link")
-      c2 <- ((16 * sqrt(3))/(15 * pi))^2  #from MCMCglmm course notes, search for c2
-      u <- logit(u/sqrt(1+c2)) 
+      c2 <- ((16 * sqrt(3))/(15 * pi))^2  #from MCMCglmm course , search for c2
+      u <- invLogit(u/sqrt(1+c2)) 
       return(u);
     })
 
 # =============================================================================
 # =============================================================================
+# GROWTH METHODS
 # Method to obtain growth transitions -
 # here linear regression to size (with powers) with a single covariate
 #
@@ -279,7 +283,8 @@ setMethod("growth",
 
 # =============================================================================
 # =============================================================================
-#  growth transition (poisson model) probability from size to sizeNext at that covariate level 
+#  growth transition (poisson model) probability from size to sizeNext at that 
+#  covariate level 
 #	NOTE DO NOT USE THIS WITH AN IPM!!
 setMethod("growth", 
     c("numeric","numeric","data.frame","growthObjPois"),
@@ -301,7 +306,8 @@ setMethod("growth",
 
 # =============================================================================
 # =============================================================================
-#  growth transition (poisson model) probability from size to sizeNext at that covariate level 
+#  growth transition (poisson model) probability from size to sizeNext at that 
+#  covariate level 
 #	NOTE DO NOT USE THIS WITH AN IPM!!
 setMethod("growth", 
     c("numeric","numeric","data.frame","growthObjNegBin"),
@@ -427,15 +433,16 @@ setMethod("growthCum",
     c("numeric", "numeric", "data.frame", "growthObjLogIncrDeclineVar"),
     function(size, sizeNext, cov, growthObj){
       
-      newd <- data.frame(cbind(cov,size = size),
+      newd <- data.frame(cbind(cov, size = size),
           stringsAsFactors = FALSE)
       newd$size2 <- size^2
       newd$size3 <- size^3
       
       if (length(grep("expsize",
               names(growthObj@fit$coefficients)))>0) newd$expsize <- exp(size)
-      if (length(grep("logsize", names(growthObj@fit$coefficients))) > 0) newd$logsize = log(size)
-      
+      if (length(grep("logsize", names(growthObj@fit$coefficients))) > 0) {
+          newd$logsize = log(size)
+      }
       mux <- .predictMuX(grObj = growthObj, newData=newd, covPred = cov)
       sigmax2 <- growthObj@fit$sigmax2
       var.exp.coef <- growthObj@fit$var.exp.coef
@@ -454,7 +461,7 @@ setMethod("growthCum",
 # using pnorm (i.e. getting cumulative at boundary points and doing difference)
 setMethod("growthCum", 
     c("numeric","numeric","data.frame","growthObj"),
-    function(size,sizeNext,cov,growthObj){
+    function(size, sizeNext, cov, growthObj){
       
       newd <- data.frame(cbind(cov,size=size),
           stringsAsFactors = FALSE)
@@ -567,6 +574,28 @@ setMethod("growthCum",
       return(u);
     })
 
+setMethod("growthCum", 
+		c("numeric","numeric","data.frame","growthObjIncrDeclineVar"),
+		function(size, sizeNext, cov, growthObj){
+			newd <- data.frame(cbind(cov,size=size),
+					stringsAsFactors = FALSE)
+			newd$size2 <- size^2
+			newd$size3 <- size^3
+			
+			if (length(grep("expsize",
+							names(growthObj@fit$coefficients))) > 0) newd$expsize <- exp(size)
+			if (length(grep("logsize",
+							names(growthObj@fit$coefficients))) > 0) newd$logsize = log(size)
+			
+			mux <- .predictMuX(grObj=growthObj,newData=newd,covPred=cov)
+			sigmax2 <- growthObj@fit$sigmax2
+			var.exp.coef<-growthObj@fit$var.exp.coef
+			sigmax2<-sigmax2*exp(2*(var.exp.coef*mux));
+			u <- pnorm(sizeNext, size + mux, sqrt(sigmax2), log.p =  FALSE)  
+			return(u);
+		})
+
+
 # =============================================================================
 # =============================================================================
 #Simple growth methods, using  declining variance in growth
@@ -617,7 +646,7 @@ setMethod("growth",
 
 # =============================================================================
 # =============================================================================
-## Define a new growth method for Hossfeld growth (classic midpoint rule approach)
+## Define a new growth method for Hossfeld growth (classic midpoint rule)
 setMethod("growth", c("numeric", "numeric", "data.frame", "growthObjHossfeld"), 
     function(size, sizeNext, cov, growthObj) { 
       mux <- size+Hossfeld(size, growthObj@paras) 
@@ -628,8 +657,9 @@ setMethod("growth", c("numeric", "numeric", "data.frame", "growthObjHossfeld"),
 
 # =============================================================================
 # =============================================================================
-## Define a new growth method for Hossfeld growth (classic midpoint rule approach)
-setMethod("growthCum", c("numeric", "numeric", "data.frame", "growthObjHossfeld"), 
+## Define a new growth method for Hossfeld growth (classic midpoint rule)
+setMethod("growthCum", c("numeric", "numeric", "data.frame", 
+                "growthObjHossfeld"), 
     function(size, sizeNext, cov, growthObj) { 
       mux <- size+Hossfeld(size, growthObj@paras) 
       sigmax <- growthObj@sd 
@@ -637,7 +667,7 @@ setMethod("growthCum", c("numeric", "numeric", "data.frame", "growthObjHossfeld"
       return(u)
     }) 
 
-### CLASSES AND FUNCTIONS FOR MATRICES (ENV, TMATRIX [compound or not], FMATRIX) #################
+### CLASSES AND FUNCTIONS FOR MATRICES (ENV, TMATRIX [compound or not], FMATRIX) 
 # =============================================================================
 # =============================================================================
 #Class for the matrix that holds the env matrix 
@@ -659,7 +689,8 @@ setClass("IPMmatrix",
 
 # =============================================================================
 # =============================================================================
-# Method combining growth and survival for doing outer (not a generic, so that don't have to
+# Method combining growth and survival for doing outer (not a generic, so that 
+# don't have to
 # define for all the different classes / growth and surv take care of that)
 growSurv <- function(size,sizeNext,cov,growthObj,survObj){
   growth(size, sizeNext, cov, growthObj) * surv(size,cov,survObj)

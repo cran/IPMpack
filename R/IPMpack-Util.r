@@ -143,6 +143,7 @@ picGrow <- function(dataf, growObj, mainTitle = "Growth",...) {
 #
 #
 generateData <- function(nSamp=1000, type="simple"){
+	if (nSamp<100) stop("Error: nSamp in generateData should be at least 100")
 	if (type=="simple"){
 	covariate <- sample(0:1, size=nSamp, replace=TRUE, prob = c(0.2, 0.8))
 	covariateNext <- sample(0:1, size=nSamp, replace=TRUE, prob = c(0.8, 0.2))
@@ -152,7 +153,7 @@ generateData <- function(nSamp=1000, type="simple"){
 	seedlings <- sample(1:nSamp,size=100,replace=TRUE)
 	size[seedlings] <- NA; sizeNext[seedlings] <- rnorm(100,2,0.5)
 	fec <- surv <- rep(NA, length(size))
-	surv[!is.na(size)] <- rbinom(sum(!is.na(size)),1,logit(-1+0.2*size[!is.na(size)]))
+	surv[!is.na(size)] <- rbinom(sum(!is.na(size)),1,invLogit(-1+0.2*size[!is.na(size)]))
 	fec[!is.na(size)] <- rnorm(sum(!is.na(size)),exp(-7+0.9*size[!is.na(size)]),1)
 	fec[size<quantile(size,0.20,na.rm=TRUE) | fec<0] <- 0
 	fec <- fec*10
@@ -252,9 +253,12 @@ simulateCarlina <- function(nSamp=200,nYrs=1000,nSampleYrs=15,
 		ag=1.14,bg=0.74,sig=0.29,
 		mean.kids=3.16,sd.kids=0.5,
 		meanYear=c(0,0,0),
-		matVarYear=matrix(c(1.03,0,0,0,0.037,0.041,0,0.041,0.075),3,3), 
+		matVarYear=matrix(c(1.03,0,0,0,0.037,0.041,0,0.041,0.075),3,3),
+		varA=0,varB=0,
 		densDep=TRUE,maxPerYr=1000,maxStoreSeedlingsPerYr=200,sizes=c()) {
 		
+	require(mvtnorm)
+	
 	#initiate and set up year index
 	if (length(sizes)==0) sizes <- rnorm(nSamp,3,0.5)
 	startYr <- (nYrs-nSampleYrs)
@@ -266,7 +270,7 @@ simulateCarlina <- function(nSamp=200,nYrs=1000,nSampleYrs=15,
 	totpl <- c(21,57,47,25,25,33,88,94,97,26,85,80,122,175,160,10,6,189)
 		
 	#set up dataframe
-	dataf <-matrix(NA,(maxPerYr+maxStoreSeedlingsPerYr)*nYrs,11)
+	dataf <-matrix(NA,(maxPerYr+maxStoreSeedlingsPerYr)*nYrs,13)
 	maxPop <- nrow(dataf)
 	n.per.yr  <-  rep(NA,nYrs)
 	trueGrow <- rep(NA,nYrs)	
@@ -279,6 +283,8 @@ simulateCarlina <- function(nSamp=200,nYrs=1000,nSampleYrs=15,
 	} else {
 		tmp <- matrix(0,nYrs,3)
 	}
+	if (varA!=0) tmpA <- rnorm(nYrs,mean=A,sd=sqrt(varA))
+	if (varB!=0) tmpB <- rnorm(nYrs,mean=B,sd=sqrt(varB))
 	
 	for (t in 1:nYrs) {
 		
@@ -291,16 +297,19 @@ simulateCarlina <- function(nSamp=200,nYrs=1000,nSampleYrs=15,
 		cg.year <- tmp[t,2]
 		b.year <- tmp[t,3]
 		
+		if (varA!=0) A.year <- tmpA[t] else A.year <- A
+		if (varB!=0) B.year <- tmpB[t] else B.year <- B
+		
 		
 		#print(c(m.year,cg.year,b.year))
 		
 		if (n.per.yr[t]>0) { 
 			#survival
-			sx <- 1*(logit(m0+ms*sizes+m.year)>runif(n.per.yr[t]))
+			sx <- 1*(invLogit(m0+ms*sizes+m.year)>runif(n.per.yr[t]))
 			#flowering
-			fx <- 1*(logit(b0+bs*sizes)>runif(n.per.yr[t]))
+			fx <- 1*(invLogit(b0+bs*sizes)>runif(n.per.yr[t]))
 			#fertility
-			seedsx <- exp(A+B*sizes)*fx*sx
+			seedsx <- exp(A.year+B.year*sizes)*fx*sx
 			#seedsx[seedsx>0] <- rpois(sum(seedsx>0),seedsx[seedsx>0])
 		} else {
 			sx <- fx <- seedsx <- c()
@@ -340,6 +349,8 @@ simulateCarlina <- function(nSamp=200,nYrs=1000,nSampleYrs=15,
 			dataf[chs,8] <- m.year
 			dataf[chs,9] <- cg.year
 			dataf[chs,10] <- b.year
+			dataf[chs,12] <- A.year
+			dataf[chs,13] <- B.year
 			
 			count <- count + length(sizes)
 						
@@ -353,6 +364,8 @@ simulateCarlina <- function(nSamp=200,nYrs=1000,nSampleYrs=15,
 			dataf[chs,9] <- cg.year
 			dataf[chs,10] <- b.year
 			dataf[chs,11] <- "sexual"
+			dataf[chs,12] <- A.year
+			dataf[chs,13] <- B.year
 			
 			count <- count + nbabes.store
 					
@@ -376,7 +389,7 @@ simulateCarlina <- function(nSamp=200,nYrs=1000,nSampleYrs=15,
 
 	list.par <- list(m0=m0,ms=ms,
 			b0=b0,bs=bs,
-			A=A,B=B,
+			A=A,B=B,varB=varB,
 			ag=ag,bg=bg,sig=sig,
 			mean.kids=mean.kids,sd.kids=sd.kids,
 			meanYear=meanYear,
@@ -389,11 +402,14 @@ simulateCarlina <- function(nSamp=200,nYrs=1000,nSampleYrs=15,
 	#print(table(dataf[,6]))
 
 	#plot(cumsum(trueGrow[startYr:nYrs])/(1:length(trueGrow[startYr:nYrs])),type="l")
+	vartrueGrow <- var(trueGrow[startYr:nYrs],na.rm=TRUE) 
+	meantrueGrow <- mean(exp(trueGrow[startYr:nYrs]),na.rm=TRUE)  
 	trueGrow <- mean(trueGrow[startYr:nYrs],na.rm=TRUE)  
 	#abline(h=trueGrow)
 	
 	colnames(dataf) <- c("size","sizeNext","surv","flower","fec",
-			"year","nSeedlings","m.year","cg.year","b.year","offspringNext")
+			"year","nSeedlings","m.year","cg.year","b.year","offspringNext",
+			"A.year","B.year")
 	
 	dataf$size <- as.numeric(dataf$size)
 	dataf$sizeNext <- as.numeric(dataf$sizeNext)
@@ -405,13 +421,16 @@ simulateCarlina <- function(nSamp=200,nYrs=1000,nSampleYrs=15,
 	dataf$cg.year <- as.numeric(dataf$cg.year)
 	dataf$m.year <- as.numeric(dataf$m.year)
 	dataf$b.year <- as.numeric(dataf$b.year)	
+	dataf$A.year <- as.numeric(dataf$A.year)	
+	dataf$B.year <- as.numeric(dataf$B.year)	
 	
 	#print(table(dataf$year))
 	
 	dataf$fec[dataf$fec==0] <- NA
 	
 	return(list(dataf=dataf,meanYear=meanYear,matVarYear=matVarYear,
-					list.par=list.par,trueGrow=trueGrow))
+					list.par=list.par,trueGrow=trueGrow,
+					vartrueGrow=vartrueGrow,meantrueGrow=meantrueGrow))
 	
 }
 
@@ -650,7 +669,6 @@ coerceSurvObj <- function(survObj, coeff){
 
 sampleVitalRateObj <- function(Obj,nSamp=100,nDiscreteGrowthTransitions=NULL,nDiscreteOffspringTransitions=NULL,nOffspring=NULL) {
   require(mvtnorm)
-  require(MASS)
   require(MCMCpack)
   
   objList <- list()
@@ -840,7 +858,10 @@ sampleIPMOutput <- function(IPMList=NULL,PMatrixList=NULL,passageTimeTargetSize=
 
 # =============================================================================
 # =============================================================================
-logit <- function(x) { u<-exp(pmin(x,50)); return(u/(1+u))}
+invLogit <- function(x) { 
+  u <- exp(pmin(x, 50))
+  return(u / (1 + u))
+}
 
 # =============================================================================
 # =============================================================================
