@@ -1,10 +1,10 @@
 Package: IPMpack
 Type: Package
 Title: Builds and analyses Integral Projection Models (IPMs).
-Version: 1.3
-Date: 2012-02-08
+Version: 1.4
+Date: 2012-09-08
 Author: CJE Metcalf, SM McMahon, R Salguero-Gomez, E Jongejans
-Maintainer: IPMpack team <ipmpack@gmail.com>
+Maintainer: Sean McMahon <ipmpack@gmail.com>
 Description: IPMpack takes demographic vital rates and (optionally)
         environmental data to build integral projection models.  A
         number of functional forms for growth and survival can be
@@ -17,6 +17,6 @@ License: GPL
 LazyLoad: yes
 Depends: Matrix, MASS, nlme, mvtnorm, methods
 Suggests: MCMCglmm, truncnorm
-Packaged: 2012-08-02 22:09:44 UTC; seanmcmahon
+Packaged: 2012-08-17 20:53:49 UTC; seanmcmahon
 Repository: CRAN
-Date/Publication: 2012-08-03 05:13:45
+Date/Publication: 2012-08-18 05:43:35

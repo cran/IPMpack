@@ -35,6 +35,7 @@ makeGrowthObj <- function(dataf,
 	dataf <- subset(dataf, is.na(dataf$size) == FALSE & is.na(dataf$sizeNext) == 
 					FALSE)
 	
+	
 	if (length(dataf$offspringNext) > 0) 
 		dataf <- subset(dataf, !dataf$offspringNext %in% c("sexual", 
 						"clonal"))
@@ -80,6 +81,9 @@ makeGrowthObj <- function(dataf,
 		dataf$covariateNext <- as.factor(dataf$covariateNext)
 		levels(dataf$covariateNext) <- 1:length(unique(dataf$covariateNext))
 	}
+	
+	if (length(intersect(all.vars(Formula),colnames(dataf)))<length(all.vars(Formula))) print("warning: not all variables in the formula are present in dataf; model cannot be fit")
+	
 	#eval fit and make the objects
 	if (Family=="gaussian") { 
 		if (regType == "constantVar")  {
@@ -254,7 +258,7 @@ makeSurvObj <- function(dataf,
 	dataf$size3 <- dataf$size^3
 	if (length(grep("logsize",as.character(Formula)))>0) dataf$logsize <- log(dataf$size)
 	
-	
+
 	#setup for discrete covariates if data suggests may be implemented by the
 	#presence of "covariate" and "covariateNext"
 	if ("covariate" %in% unlist(strsplit(as.character(Formula), "[+-\\* ]")) & length(dataf$covariate) > 0) { 
@@ -265,6 +269,8 @@ makeSurvObj <- function(dataf,
 		dataf$covariateNext <- as.factor(dataf$covariateNext)
 		levels(dataf$covariateNext) <- 1:length(unique(dataf$covariateNext))
 	}
+	
+	if (length(intersect(all.vars(Formula),colnames(dataf)))<length(all.vars(Formula))) print("warning: not all variables in the formula are present in dataf; model cannot be fit")
 	
 	
 	fit <- glm(Formula,family=binomial,data=dataf)
@@ -371,6 +377,8 @@ makeFecObj <- function(dataf,
 		if (Transform[i]=="sqrt") dataf[,fecNames[i]] <- sqrt(dataf[,fecNames[i]])
 		if (Transform[i]=="-1") dataf[,fecNames[i]] <- dataf[,fecNames[i]]-1
 		dataf[!is.finite(dataf[,fecNames[i]]),fecNames[i]] <- NA
+		
+		if (length(intersect(all.vars(Formula[[i]]),colnames(dataf)))<length(all.vars(Formula[[i]]))) print("warning: not all variables in the formula are present in dataf; model cannot be fit")
 		
 		
 		f1@fitFec[[i]] <- glm(Formula[[i]],family=Family[i],data=dataf)
@@ -570,7 +578,7 @@ makeClonalObj <- function(dataf,
 # 4. Discrete Transition models  #######################################################################################################
 
 ## Function to take a data-frame and make a discrete transition object
-## for combining with a continuous T matrix
+## for combining with a continuous P matrix
 #
 # Parameters - dataf - dataframe with headings of at least
 #                      size, sizeNext, surv, fec, stage, stageNext, number
@@ -988,7 +996,7 @@ makePostFecObjs <- function(dataf,
 }
 
 
-# Function to take a list of growth and survival objects and make a list of Tmatrices
+# Function to take a list of growth and survival objects and make a list of Pmatrices
 #
 # Parameters - growObjList - a list of growth objects
 #            - survObjList - a list of survival objects
@@ -998,8 +1006,8 @@ makePostFecObjs <- function(dataf,
 #            - cov - is a discrete covariate considered
 #            - envMat - enviromental matrix for transition between
 # 
-# Returns    - a list of Tmatrices
-makeListTmatrix <- function(growObjList,survObjList,
+# Returns    - a list of Pmatrices
+makeListPmatrix <- function(growObjList,survObjList,
 		nBigMatrix,minSize,maxSize, cov=FALSE, envMat=NULL,
 		integrateType="midpoint",correction="none") {
 	
@@ -1012,14 +1020,14 @@ makeListTmatrix <- function(growObjList,survObjList,
 	
 	nsamp <- length(growObjList)
 	
-	TmatrixList <- list()
+	PmatrixList <- list()
 	for ( k in 1:length(growObjList)) { 
 		if (!cov) {
-			TmatrixList[[k]] <- createIPMTmatrix(nBigMatrix = nBigMatrix, minSize = minSize, 
+			PmatrixList[[k]] <- createIPMPmatrix(nBigMatrix = nBigMatrix, minSize = minSize, 
 					maxSize = maxSize, growObj = growObjList[[k]],
 					survObj = survObjList[[k]],integrateType=integrateType, correction=correction) 
 		} else {
-			TmatrixList[[k]] <- createCompoundTmatrix(nEnvClass = length(envMat[1,]),
+			PmatrixList[[k]] <- createCompoundPmatrix(nEnvClass = length(envMat[1,]),
 					nBigMatrix = nBigMatrix, minSize = minSize, 
 					maxSize = maxSize, envMatrix=envMat,
 					growObj = growObjList[[k]],
@@ -1027,7 +1035,7 @@ makeListTmatrix <- function(growObjList,survObjList,
 		}
 	}
 	
-	return(TmatrixList)
+	return(PmatrixList)
 }
 
 # Function to take a list of growth and survival objects and make a list of Fmatrices
@@ -1062,6 +1070,7 @@ makeListFmatrix <- function(fecObjList,nBigMatrix,minSize,maxSize, cov=FALSE,
 ## Function to convert class linear regression for increment
 ## to truncIncrement
 convertGrowthObjIncrTruncObj <- function(growthObj){
+	if (class(growthObj)!="growthObjIncr") print("This function only make sense for an object of class growthObjIncr")
 	
 	gr2 <- new("growthObjTruncIncr")
 	gr2@fit$coefficients <- growthObj@fit$coefficients
@@ -1069,6 +1078,63 @@ convertGrowthObjIncrTruncObj <- function(growthObj){
 	gr2@fit$sigma <- growthObj@sd
 	
 	return(gr2)
+	
+}
+
+
+
+### new functions createGrowhtObj and createSurvObj which will make up their own data
+
+createGrowthObj <- function(Formula=sizeNext~size, coeff=c(1,1), sd=1){ 
+	
+	var.names <- all.vars(Formula)
+	
+	if (length(coeff)!=(length(var.names))) #length var.names, because intercept not named 
+		stop("not enough coefficients supplied for the chosen Formula")
+	
+	dataf<- as.data.frame(matrix(rnorm(3*length(var.names)),3,length(var.names)))
+	colnames(dataf) <- var.names
+	
+	fit <- lm(Formula, data=dataf)
+	
+	if (length(grep("sizeNext", as.character(Formula))) > 0) { 
+		
+		gr1 <- new("growthObj")
+		gr1@fit <- fit
+		gr1@fit$coefficients <- coeff
+		gr1@sd <- sd
+	}  
+	
+	if (length(grep("incr", as.character(Formula))) > 0) { 
+		
+		gr1 <- new("growthObjIncr")
+		gr1@fit <- fit
+		gr1@fit$coefficients <- coeff
+		gr1@sd <- sd
+	}  
+	
+	return(gr1)
+	
+}
+
+
+
+createSurvObj <- function(Formula=surv~size, coeff=c(1,1)){ 
+	var.names <- all.vars(Formula)
+	
+	if (length(coeff)!=(length(var.names))) 
+		stop("not enough coefficients supplied for the chosen Formula")
+	
+	dataf<- as.data.frame(matrix(rnorm(3*length(var.names)),3,length(var.names)))
+	colnames(dataf) <- var.names
+	dataf$surv <- sample(c(0,1),nrow(dataf), replace=TRUE)
+	
+	fit <- glm(Formula, data=dataf, family=binomial)
+	
+	sv1 <- new("survObj")
+	sv1@fit <- fit
+	
+	return(sv1)
 	
 }
 
