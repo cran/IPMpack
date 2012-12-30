@@ -393,7 +393,7 @@ setMethod("growth",
 
 # growth for predicting next logincr with decline var
 setMethod("growth", 
-		c("numeric","numeric","data.frame","growthObjLogIncrDeclineVar"),
+		c("numeric", "numeric", "data.frame", "growthObjLogIncrDeclineVar"),
 		function(size,sizeNext,cov,growthObj){
 			newd <- data.frame(cbind(cov,size=size),
 					stringsAsFactors = FALSE)
@@ -405,36 +405,35 @@ setMethod("growth",
 			if (length(grep("logsize",
 							names(growthObj@fit$coefficients)))>0) newd$logsize=log(size)
 			
-			mux <- .predictMuX(grObj=growthObj,newData=newd,covPred=cov)
+			mux <- .predictMuX(grObj = growthObj, newData = newd, covPred = cov)
 			sigmax2 <- growthObj@fit$sigmax2
-			var.exp.coef<-growthObj@fit$var.exp.coef
-			sigmax2<-sigmax2*exp(2*(var.exp.coef*mux));
+			var.exp.coef <- growthObj@fit$var.exp.coef
+			sigmax2 <- sigmax2 * exp(2 * (var.exp.coef * mux));
 			
-			u <- dlnorm(sizeNext-size,mux,sqrt(sigmax2),log=FALSE)  
+			u <- dlnorm(sizeNext - size, mux, sqrt(sigmax2), log = FALSE)  
 			return(u);
 		})
 
 # growth for predicting next logincr with decline var
 setMethod("growthCum", 
-		c("numeric","numeric","data.frame","growthObjLogIncrDeclineVar"),
-		function(size,sizeNext,cov,growthObj){
+		c("numeric", "numeric", "data.frame", "growthObjLogIncrDeclineVar"),
+		function(size, sizeNext, cov, growthObj){
 			
-			newd <- data.frame(cbind(cov,size=size),
+			newd <- data.frame(cbind(cov,size = size),
 					stringsAsFactors = FALSE)
 			newd$size2 <- size^2
 			newd$size3 <- size^3
 			
 			if (length(grep("expsize",
 							names(growthObj@fit$coefficients)))>0) newd$expsize <- exp(size)
-			if (length(grep("logsize",
-							names(growthObj@fit$coefficients)))>0) newd$logsize=log(size)
+			if (length(grep("logsize", names(growthObj@fit$coefficients))) > 0) newd$logsize = log(size)
 			
-			mux <- .predictMuX(grObj=growthObj,newData=newd,covPred=cov)
+			mux <- .predictMuX(grObj = growthObj, newData=newd, covPred = cov)
 			sigmax2 <- growthObj@fit$sigmax2
-			var.exp.coef<-growthObj@fit$var.exp.coef
-			sigmax2<-sigmax2*exp(2*(var.exp.coef*mux));
+			var.exp.coef <- growthObj@fit$var.exp.coef
+			sigmax2 <- sigmax2 * exp(2 * (var.exp.coef * mux));
 			
-			u <- plnorm(sizeNext-size,mux,sqrt(sigmax2),log=FALSE)  
+			u <- plnorm(sizeNext - size, mux, sqrt(sigmax2), log.p =  FALSE)  
 			return(u);
 		})
 
@@ -463,7 +462,7 @@ setMethod("growthCum",
 							growthObj@fit$formula))>0) newd$logsize=log(size)
 			mux <- predict(growthObj@fit,newd,type="response")
 			sigmax <-growthObj@sd
-			u <- pnorm(sizeNext,mux,sigmax,log=FALSE)  
+			u <- pnorm(sizeNext,mux,sigmax, log.p =FALSE)  
 			return(u);
 		})
 
@@ -484,7 +483,7 @@ setMethod("growthCum",
 			
 			mux <- predict(growthObj@fit,newd,type="response")
 			sigmax <-growthObj@sd
-			u <- pnorm(sizeNext,size+mux,sigmax,log=FALSE)  
+			u <- pnorm(sizeNext,size+mux,sigmax, log.p =FALSE)  
 			return(u); 
 		})
 
@@ -518,20 +517,20 @@ setMethod("growthCum",
 # using pnorm (i.e. getting cumulative at boundary points and doing difference)
 setMethod("growthCum", 
 		c("numeric","numeric","data.frame","growthObjLogIncr"),
-		function(size,sizeNext,cov,growthObj){
+		function(size, sizeNext, cov, growthObj){
 			
 			newd <- data.frame(cbind(cov,size=size),
 					stringsAsFactors = FALSE)
 			newd$size2 <- size^2
 			newd$size3 <- size^3
 			if (length(grep("expsize",
-							growthObj@fit$formula))>0) newd$expsize <- exp(size)
+							names(growthObj@fit$coefficients)))>0) newd$expsize <- exp(size)
 			if (length(grep("logsize",
-							growthObj@fit$formula))>0) newd$logsize=log(size)
+							names(growthObj@fit$coefficients)))>0) newd$logsize=log(size)
 			
 			mux <- predict(growthObj@fit,newd,type="response")
 			sigmax <-growthObj@sd
-			u <- plnorm(sizeNext-size,mux,sigmax,log=FALSE)  
+			u <- plnorm(sizeNext-size,mux,sigmax,log.p = FALSE)  
 			return(u);
 		})
 
@@ -556,7 +555,7 @@ setMethod("growthCum",
 			sigmax2 <- growthObj@fit$sigmax2
 			var.exp.coef<-growthObj@fit$var.exp.coef
 			sigmax2<-sigmax2*exp(2*(var.exp.coef*mux));
-			u <- pnorm(sizeNext,mux,sqrt(sigmax2),log=FALSE)  
+			u <- pnorm(sizeNext,mux,sqrt(sigmax2),log.p =FALSE)  
 			return(u);
 		})
 
@@ -625,7 +624,7 @@ setMethod("growth",
 			sigmax2 <- growthObj@fit$sigmax2
 			var.exp.coef<-growthObj@fit$var.exp.coef
 			sigmax2<-sigmax2*exp(2*(var.exp.coef*mux));
-			u <- dnorm(sizeNext, size + mux, sqrt(sigmax2), log = FALSE)  
+			u <- dnorm(sizeNext, size + mux, sqrt(sigmax2), log =  FALSE)  
 			return(u);
 		})
 
@@ -635,7 +634,7 @@ setMethod("growth", c("numeric", "numeric", "data.frame", "growthObjHossfeld"),
 		function(size, sizeNext, cov, growthObj) { 
 			mux <- size+Hossfeld(size, growthObj@paras) 
 			sigmax <- growthObj@sd 
-			u <- dnorm(sizeNext, mux, sigmax, log = FALSE) 
+			u <- dnorm(sizeNext, mux, sigmax, log =  FALSE) 
 			return(u)
 		}) 
 
@@ -645,7 +644,7 @@ setMethod("growthCum", c("numeric", "numeric", "data.frame", "growthObjHossfeld"
 		function(size, sizeNext, cov, growthObj) { 
 			mux <- size+Hossfeld(size, growthObj@paras) 
 			sigmax <- growthObj@sd 
-			u <- pnorm(sizeNext, mux, sigmax, log = FALSE) 
+			u <- pnorm(sizeNext, mux, sigmax, log.p =  FALSE) 
 			return(u)
 		}) 
 
@@ -785,17 +784,14 @@ createIPMPmatrix <- function (nEnvClass = 1, nBigMatrix = 50, minSize = -1, maxS
 		disc.to.cont <- matrix(0, ncol = nDisc, nrow = nBigMatrix)
 		cont.to.disc <- matrix(0, nrow = nDisc, ncol = nBigMatrix)
 		for (j in 1:nDisc) {
-			tmp <- dnorm(y, discreteTrans@meanToCont[j], discreteTrans@sdToCont[j]) * 
-					h
-			if (correction == "constant") 
-				tmp <- tmp/sum(tmp)
-			disc.to.cont[, j] <- discreteTrans@discreteTrans["continuous", j] * tmp
-		}
-		if (sum(discreteTrans@discreteTrans[1:nDisc,"continuous"])==0) {
-			cont.to.disc[] <- 0
-		} else {
-			cont.to.disc[j, ] <- surv(y, chosenCov, survObj) * survToDiscrete * 
+			tmp <- dnorm(y, discreteTrans@meanToCont[j], discreteTrans@sdToCont[j]) * h
+			if (correction == "constant") tmp <- tmp/sum(tmp)
+			tmp[which(is.na(tmp))] <- 0
+			disc.to.cont[, j]  <- discreteTrans@discreteTrans["continuous", j] * tmp
+			if (discreteTrans@discreteTrans[j,"continuous"]>0) {
+				cont.to.disc[j, ] <- surv(y, chosenCov, survObj) * survToDiscrete * 
 					discreteTrans@discreteTrans[j,"continuous"] / sum(discreteTrans@discreteTrans[1:nDisc,"continuous"]) 
+			}
 		}
 		get.disc.matrix <- rbind(cbind(disc.to.disc, cont.to.disc), 
 				cbind(disc.to.cont, cont.to.cont))
@@ -844,18 +840,16 @@ createIntegerPmatrix <- function (nEnvClass = 1,
 		cont.to.disc <- matrix(0, nrow = nDisc, ncol = nBigMatrix)
 		for (j in 1:nDisc) {
 			if (discreteTrans@distToCont=="poisson") 
-			 tmp <- dpois(y, discreteTrans@meanToCont[j]) 
-		 if (discreteTrans@distToCont=="negBin") 
-			 tmp <- dnbinom(y, mu=discreteTrans@meanToCont[j], size=discreteTrans@thetaToCont[j]) 
-		 		 		 
-			disc.to.cont[, j] <- discreteTrans@discreteTrans["continuous", j] * tmp
-		}
-		if (sum(discreteTrans@discreteTrans[1:nDisc,"continuous"])==0) {
-			cont.to.disc[] <- 0
-		} else {
-			cont.to.disc[j, ] <- surv(y, chosenCov, survObj) * survToDiscrete * 
+				tmp <- dpois(y, discreteTrans@meanToCont[j]) 
+			if (discreteTrans@distToCont=="negBin") 
+				tmp <- dnbinom(y, mu=discreteTrans@meanToCont[j], size=discreteTrans@thetaToCont[j]) 
+		 	tmp[which(is.na(tmp))] <- 0
+		 	disc.to.cont[, j] <- discreteTrans@discreteTrans["continuous", j] * tmp
+			if (sum(discreteTrans@discreteTrans[j,"continuous"]>0)) {
+				cont.to.disc[j, ] <- surv(y, chosenCov, survObj) * survToDiscrete * 
 					discreteTrans@discreteTrans[j,"continuous"] / sum(discreteTrans@discreteTrans[1:nDisc,"continuous"]) 
-		}
+			}
+		}	
 		get.disc.matrix <- rbind(cbind(disc.to.disc, cont.to.disc), 
 				cbind(disc.to.cont, cont.to.cont))
 

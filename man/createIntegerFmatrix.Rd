@@ -3,18 +3,18 @@
 \alias{createIntegerPmatrix}
 %- Also NEED an '\alias' for EACH other topic documented here. 
 \title{
-Builds P and F matrices built off regressions fitted to discrete variables (with probability mass functions rather than pdfs).
+Builds P and F matrices built off regressions fitted to discrete variables (with probability mass functions rather than probability density functions).
 }
 \description{
-Uses growth, survival and fecundity objects to construct a matrix defining per-capita contribution to recruitment stages (e.g., propagules [seed, spore], seedlings, calves) by reproductive stages due to sexual reproduction (for the F matrix); and contributions via and growth and survival to continuous stages. 
+Uses survival, growth and fecundity objects to construct a matrix defining per-capita contribution to recruitment stages (e.g., propagules [seed, spore], seedlings, calves) by reproductive stages due to sexual reproduction (for the F matrix); and transition probabilities determined from survival and growth to quasi-continuous stages based on integer data (e.g. number of leaves) as opposed to truly continuous data (e.g. mass). 
 }
 \usage{
-createIntegerFmatrix(fecObj, nEnvClass = 1, meshpoints=1:20, 
+createIntegerFmatrix(fecObj, nEnvClass = 1, meshpoints = 1:20, 
 	chosenCov = data.frame(covariate=1), 
 	preCensus = TRUE, survObj = NULL, growObj = NULL)
 
 createIntegerPmatrix(nEnvClass = 1, 
-		meshpoints=1:20,
+		meshpoints = 1:20,
 		chosenCov = data.frame(covariate = 1), 
 		growObj, survObj, 
 		discreteTrans = 1)
@@ -37,22 +37,22 @@ createIntegerPmatrix(nEnvClass = 1,
   }
   \item{preCensus}{
     logical (TRUE or FALSE), indicating whether the fecundity object should
-    represent an interval between pre-breeding or a post-breeding censusses.
+    represent an interval between pre-breeding or a post-breeding censuses.
     defaults to TRUE (pre-breeding census), meaning that all reproduction 
     and offspring rates required for the F matrix are embedded in fecObj. 
     Alternatively, an F matrix based on post-breeding census (preCensus=FALSE)
     requires additional survObj and growObj, to cover the survival and growth
-    of the parents until the reproduction event. 
+    of the parents until the reproductive event. 
   }
   \item{survObj}{
     survival object, describing the survival of parents from a census until 
-    the reproduction event starts (at some point during the inter-census time step).
+    the reproductive event starts (at some point during the inter-census time step).
     If preCensus = FALSE but no survival object is provided, it is assumed
     that all individuals survive to the breeding event.  
   }
   \item{growObj}{
     growth object, describing the growth of parents that survive until the 
-    reproduction event starts. Warning: this growth object is still ignored in 
+    reproductive event starts. Warning: this growth object is still ignored in 
     createIPMFmatrix in the current version of IPMpack. It will become functional 
     in coming versions. So far it is assumed that at time of breeding the individuals 
     have the same size as at the beginning of the time interval.
@@ -67,7 +67,7 @@ createIntegerPmatrix(nEnvClass = 1,
   length(meshpoints)+nrow(discreteTrans).
 }
 \details{
- do check whether the Pmatrix adequately reflects survival. 
+ do check whether the Pmatrix adequately reflects survival by using diagnosticsPmatrix(). 
 }
 \references{
 For information on F and P matrix: Caswell. 2001. Matrix population models: construction, analysis, and interpretation. 2nd ed. Sinauer. p110-112.
@@ -76,7 +76,7 @@ For information on F and P matrix: Caswell. 2001. Matrix population models: cons
 C. Jessica E. Metcalf, Sean M. McMahon, Roberto Salguero-Gomez & Eelke Jongejans.
 }
 \note{
-With thanks to Alden Griffith.
+With thanks to Dr Alden Griffith.
 }
 
 %% ~Make other sections like Warning with \section{Warning }{....} ~
@@ -86,60 +86,58 @@ With thanks to Alden Griffith.
 }
 \examples{
 
-# Generate data with only continuous stage and discretize sizes
+# Open dataset for the herbaceous perennial Cryptantha flava where the state variable is integer (number of rosettes)
+data(cryptaDataCovSubset)
+head(cryptaDataCovSubset)
+d <- cryptaDataCovSubset
+
+#See the description of the data for information on the variables
+help(cryptaDataCovSubset)
+
+# For this example, focus only on the first annual transition available in the dataset
+d1 <- d[d$year==2004, ]
+
+#Make survival, growth and fecundity objects assuming a poisson distribution
+so <- makeSurvObj(d1)
+go1 <- makeGrowthObj(d1, Formula = sizeNext~size, Family = "poisson")
+fo <- makeFecObjInteger(d1, Formula = fec1~size, distOffspring = "poisson")
+
+#Create P and F matrices
+Pmatrix1 <- createIntegerPmatrix(growObj = go1, survObj = so, meshpoints = 1:101, discreteTrans = 1)
+Fmatrix <- createIntegerFmatrix(fecObj = fo, meshpoints = 1:101)
+
+par(mfrow = c(1, 3), bty = "l")
+
+plot(d1$size, d1$sizeNext, xlab = "Stage at t", ylab = "Stage at t+1")
+
+image(Pmatrix1@meshpoints, Pmatrix1@meshpoints, t(Pmatrix1), 
+	xlab = "Stage at t", 
+		ylab = "Stage at t+1")
+image(Fmatrix@meshpoints, Fmatrix@meshpoints, t(Fmatrix), 
+	xlab = "Stage at t", 
+		ylab = "Stage at t+1")		
+
+#Same approach, but with negative binomial instead of poisson for stage transitions
+go2 <- makeGrowthObj(d1, Formula = sizeNext~size, Family = "negbin")
+
+#Recalculate the P matrix
+Pmatrix2 <- createIntegerPmatrix(growObj = go1, survObj = so, meshpoints = 1:101, discreteTrans = 1)
+
+par(mfrow = c(1, 3), bty = "l")
+plot(d1$size, d1$sizeNext, xlab = "Stage at t", ylab = "Stage at t+1")
+points(1:100, predict(go2@fit[[1]], newdata = data.frame(size = 1:100),
+		type = "response"), type = "l", col = 2)
+
+image(Pmatrix2@meshpoints, Pmatrix2@meshpoints, t(Pmatrix2), 
+	xlab = "Stage at t", 
+		ylab = "Stage at t+1")
+image(Fmatrix@meshpoints, Fmatrix@meshpoints, t(Fmatrix), 
+	xlab = "Stage at t", 
+		ylab = "Stage at t+1")		
+
+#The following repeats the same approach, but with negative binomial instead of poisson for stage transitions
 dff <- generateData()
-dff$fec[dff$fec==0] <- NA
-dff$size <- pmax(floor(dff$size+10),0)
-dff$sizeNext <- pmax(floor(dff$sizeNext+10),0)
+go2 <- makeGrowthObj(d1, Family = "negbin")
+Pmatrix2 <- createIntegerPmatrix(growObj = go2, survObj = so, meshpoints = 1:101, discreteTrans = 1)
 
-# make objects
-gr1<-makeGrowthObj(dff,Family="poisson")
-sv1<-makeSurvObj(dff)
-fv1 <- makeFecObjInteger(dff, Formula = fec~size, Transform = "log")
-
-#plot the new growth object
-par(mfrow=c(1,3),bty="l")
-plot(dff$size,dff$sizeNext, xlab="stage at t", ylab="stage at t+1")
-points(1:20,predict(gr1@fit,newdata=data.frame(size=1:20), type="response"),type="l",col=2)
-
-#make the P and T matrix
-Fmatrix <- createIntegerFmatrix(fecObj = fv1, meshpoints=1:20)
-Pmatrix <- createIntegerPmatrix(meshpoints=1:20,
-			growObj=gr1, survObj=sv1, 
-			discreteTrans = 1)
-
-
-#plot them
-image(Fmatrix@meshpoints, Fmatrix@meshpoints, t(Fmatrix), 
-	xlab = "Stage at t", 
-		ylab = "Stage at t+1")
-
-image(Pmatrix@meshpoints, Pmatrix@meshpoints, t(Pmatrix), 
-	xlab = "Stage at t", 
-		ylab = "Stage at t+1")
-
-
-#same but with negative binomial instead of poisson for stage transitions
-gr1<-makeGrowthObj(dff,Family="negbin")
-
-#plot
-par(mfrow=c(1,3),bty="l")
-plot(dff$size,dff$sizeNext, xlab="stage at t", ylab="stage at t+1")
-points(1:20,predict(gr1@fit[[1]],newdata=data.frame(size=1:20),type="response"),type="l",col=2)
-
-#make the P and T matrix
-Fmatrix <- createIntegerFmatrix(fecObj = fv1, meshpoints=1:20)
-Pmatrix <- createIntegerPmatrix(meshpoints=1:20,
-			growObj=gr1, survObj=sv1, 
-			discreteTrans = 1)
-
-
-#plot them
-image(Fmatrix@meshpoints, Fmatrix@meshpoints, t(Fmatrix), 
-	xlab = "Stage at t", 
-		ylab = "Stage at t+1")
-
-image(Pmatrix@meshpoints, Pmatrix@meshpoints, t(Pmatrix), 
-	xlab = "Stage at t", 
-		ylab = "Stage at t+1")
 }

@@ -5,7 +5,7 @@
   Generates random data in the form used by IPMpack based on the population dynamics of Carlina vulgaris
 }
 \description{
-  Simulates growth, survival and fecundity and density dependent seedling establishment to create a dataframe of the form required by the functions and methods used in IPMpack. Demographic stage data is only continuous.
+  Simulates growth, survival and fecundity and density dependent seedling establishment to create a dataframe of the form required by the functions and methods used in IPMpack. Demographic stage data is only continuous. Note that the number or rows corresponding to each year of the data-frame does not inform about population size, since rows exist that correspond to offspring appearing in the subsequent year. 
 }
 \usage{
 simulateCarlina(nSamp=2000,nYrs=1000,nSampleYrs=15,
@@ -15,7 +15,8 @@ simulateCarlina(nSamp=2000,nYrs=1000,nSampleYrs=15,
 		ag=1.13,bg=0.74,sig=sqrt(0.095),
 		mean.kids=3.0,sd.kids=0.52,
 		meanYear=c(0,0,0),
-		matVarYear=matrix(c(1.34,0.1,0,0.1,0.04,0,0,0,0.01),3,3))
+		matVarYear=matrix(c(1.34,0.1,0,0.1,0.04,0,0,0,0.01),3,3),densDep=TRUE,maxPop=1e7,
+		sizes = c())
 }
 \arguments{
 	\item{nSamp}{
@@ -64,9 +65,18 @@ variance kid size
 mean year effects
 	}
 \item{matVarYear}{
-covariance covariance in eyar effects
+var-covariance in year effects
 	}
 
+\item{densDep}{
+density dependence in seedling establishment or not? 
+	}
+\item{maxPop}{
+maxPop no measurements recorded at which to stop iterating - i.e. break the loop and return data up to that year
+	}
+\item{sizes}{
+starting sizes in the population (optional)
+	}
 
 
 }
@@ -104,7 +114,8 @@ C. Jessica E. Metcalf, Sean M. McMahon, Roberto Salguero-Gomez & Eelke Jongejans
 \code{\link{generateDataStoch}},\code{\link{generateDataDiscrete}}
 }
 \examples{
-dff <- simulateCarlina(nSamp=1000)
-head(dff$dataf)
+#Uncomment to run
+#dff <- simulateCarlina(nSamp=1000)
+#head(dff$dataf)
 
 }

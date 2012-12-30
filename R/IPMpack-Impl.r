@@ -30,7 +30,7 @@
 makeGrowthObj <- function(dataf,
 		Formula=sizeNext~size,
 		regType="constantVar",
-		Family="gaussian") {
+		Family="gaussian", link=NULL) {
 	
 	dataf <- subset(dataf, is.na(dataf$size) == FALSE & is.na(dataf$sizeNext) == 
 					FALSE)
@@ -103,14 +103,24 @@ makeGrowthObj <- function(dataf,
 	} else {
 		if (regType != "constantVar") print("Warning: your regType is ignored because a non-gaussian model is fitted using glm")
 		if (Family=="negbin"){
-			fit <- glm.nb(Formula, data=dataf)
+			if (is.null(link)) { print("setting link to identity"); link <- "identity" }
+			if (link=="identity") fit <- glm.nb(Formula, data=dataf,link="identity")
+			if (link=="log") fit <- glm.nb(Formula, data=dataf,link="log")
+			#if (link=="sqrt") fit <- glm.nb(Formula, data=dataf,link="sqrt")
+			if (link!="identity" & link!="log"){stop("unknown link specified for negative binomial")}
 			fit.here <- list()
-			fit.here[[1]] <- glm.convert(fit)
+			if (link=="log") fit.here[[1]] <- glm.convert(fit)
+			if (link=="identity") { 
+				fit.dummy <-  glm(Formula, data=dataf)
+				fit.dummy$coefficients <- fit$coefficients
+				fit.here[[1]] <- fit.dummy
+			}
 			fit.here[[2]] <- fit$theta
 			fit.here[[3]] <- fit  
 		} else {
 			fit <- glm(Formula, data=dataf, family=Family)
 			fit.here <- fit
+			#print("here")
 		}           
 	}
 	
@@ -638,7 +648,7 @@ makeDiscreteTrans <- function(dataf,
 	}
 	if (class(meanToCont)!="matrix") stop("Error - the meanToCont matrix you entered should be a matrix")
 	if (nrow(meanToCont)!=1) stop("Error - the meanToCont matrix you entered should contain just 1 row with means (or NA's for those discrete stages from which no individuals move to the continuous class")
-	if (sum(dimnames(meanToCont)[[2]]==stages[1:nDiscreteClasses])<nDiscreteClasses) stop("Error - the column names of the meanToCont matrix you entered should be in alphabetical order and match the column names of the discrete classes in discreteTrans (so without continuous)")
+	if (sum(dimnames(meanToCont)[[2]]==stages[1:nDiscreteClasses])<nDiscreteClasses) stop("Error - the column names of the meanToCont matrix you entered should be in alphabetical order and match the column names of the discrete classes in discreteTrans (so without continuous). If some of the discete stages are not mentioned in your data file, this error can be fixed by adding those stages first: levels(dataf$stage)<-c(levels(dataf$stage),<unmentioned_discrete_stages>)")
 	#define the sd size of individuals coming from discrete stages to the continuous stage
 	if (is.na(sdToCont[1])&length(sdToCont)==1) {
 		sdToCont <- matrix(NA,nrow=1,ncol=nDiscreteClasses,dimnames=list(1,stages[1:nDiscreteClasses]))
@@ -648,7 +658,7 @@ makeDiscreteTrans <- function(dataf,
 	}
 	if (class(sdToCont)!="matrix") stop("Error - the sdToCont matrix you entered should be a matrix")
 	if (nrow(sdToCont)!=1) stop("Error - the sdToCont matrix you entered should contain just 1 row with means (or NA's for those discrete stages from which no individuals move to the continuous class")
-	if (sum(dimnames(sdToCont)[[2]]==stages[1:nDiscreteClasses])<nDiscreteClasses) stop("Error - the column names of the sdToCont matrix you entered should be in alphabetical order and match the column names of the discrete classes in discreteTrans (so without continuous)")
+	if (sum(dimnames(sdToCont)[[2]]==stages[1:nDiscreteClasses])<nDiscreteClasses) stop("Error - the column names of the sdToCont matrix you entered should be in alphabetical order and match the column names of the discrete classes in discreteTrans (so without continuous). If some of the discete stages are not mentioned in your data file, this error can be fixed by adding those stages first: levels(dataf$stage)<-c(levels(dataf$stage),<unmentioned_discrete_stages>)")
 	# make the regression to relate the probability of individuals moving to any of the discrete stages as a function of their size 
 	if (sum(discreteTrans[stages[1:nDiscreteClasses],"continuous"])==0) {
 		survToDiscrete <- glm(rep(0,21)~1, family = binomial)
@@ -1159,6 +1169,8 @@ createGrowthObj <- function(Formula=sizeNext~size, coeff=c(1,1), sd=1){
 createSurvObj <- function(Formula=surv~size, coeff=c(1,1)){ 
 	var.names <- all.vars(Formula)
 	
+	#not that although var.names will have one extra (cos of response variable
+	# this will correspond to the intercept
 	if (length(coeff)!=(length(var.names))) 
 		stop("not enough coefficients supplied for the chosen Formula")
 	
@@ -1174,6 +1186,62 @@ createSurvObj <- function(Formula=surv~size, coeff=c(1,1)){
 	return(sv1)
 	
 }
+
+
+
+ 
+createFecObj <- function(Formula=list(fec1~size,fec2~size+size2), 
+							coeff=list(c(1,1),c(1,1,1)),
+							Family = c("gaussian","binomial"),
+							Transform = c("log","none"),
+							meanOffspringSize = NA, sdOffspringSize = NA, 
+							offspringSplitter = data.frame(continuous = 1), 
+							vitalRatesPerOffspringType = data.frame(NA), 
+							fecByDiscrete = data.frame(NA), 
+							offspringSizeExplanatoryVariables = "1",
+							fecConstants = data.frame(NA)){ 
+	var.names <- c()
+	fecNames <- rep(NA,length(Formula))
+	for (j in 1:length(Formula)) { 
+		fecNames[j] <- all.vars(Formula[[j]])[1]
+		var.names.here <- all.vars(Formula[[j]])
+		
+		if (length(coeff[[j]])!=(length(var.names.here))) 
+			stop(paste("not enough coefficients supplied for the ",j, "th Formula", sep=""))
+		
+		var.names <- c(var.names,var.names.here)
+	}
+	
+	var.names <- unique(var.names)
+	
+	#build a data-frame with all the right variables
+	dataf<- as.data.frame(matrix(rnorm(3*length(var.names)),3,length(var.names)))
+	colnames(dataf) <- var.names
+	dataf$surv <- sample(c(0,1),nrow(dataf), replace=TRUE)
+	
+	dataf[,fecNames[which(Transform=="log")]] <- pmax(dataf[,fecNames[which(Transform=="log")]],1)
+	dataf[,fecNames[which(Family=="binomial")]] <- rbinom(nrow(dataf),1,0.5)
+	
+	fv1 <- makeFecObj(dataf=dataf, 
+			fecConstants = fecConstants, 
+			Formula = Formula, 
+			Family = Family, 
+			Transform = Transform, meanOffspringSize = meanOffspringSize, 
+			sdOffspringSize = sdOffspringSize, offspringSplitter = offspringSplitter, 
+			vitalRatesPerOffspringType = vitalRatesPerOffspringType, 
+			fecByDiscrete = fecByDiscrete, 
+			offspringSizeExplanatoryVariables = offspringSizeExplanatoryVariables)
+	
+	#now over-write with the desired coefficients!
+	for (j in 1:length(Formula)) { 
+		fv1@fitFec[[j]]$coefficients <- coeff[[j]]
+		}
+	
+	return(fv1)
+	
+}
+
+
 
 
 ### integer related functions

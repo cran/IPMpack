@@ -2,7 +2,7 @@
 
 
 # Function to extract IPM output from a list
-# of T (survival + growth) and F (fecundity) matrices
+# of P (survival + growth) and F (fecundity) matrices
 # (usually from Bayes fit) 
 #
 # Parameters - PmatrixList
@@ -577,10 +577,11 @@ simulateCarlina <- function(nSamp=2000,nYrs=1000,nSampleYrs=15,
 		ag=1.13,bg=0.74,sig=sqrt(0.095),
 		mean.kids=3.0,sd.kids=0.52,
 		meanYear=c(0,0,0),
-		matVarYear=matrix(c(1.34,0.1,0,0.1,0.04,0,0,0,0.01),3,3)) {
+		matVarYear=matrix(c(1.34,0.1,0,0.1,0.04,0,0,0,0.01),3,3), 
+		densDep=TRUE,maxPop=1e7, sizes=c()) {
 		
 	#initiate and set up year index
-	sizes <- rnorm(nSamp,3,0.5)
+	if (length(sizes)==0) sizes <- rnorm(nSamp,3,0.5)
 	startYr <- (nYrs-nSampleYrs)
 	
 	#recruits
@@ -588,41 +589,47 @@ simulateCarlina <- function(nSamp=2000,nYrs=1000,nSampleYrs=15,
 	
 	#total plants
 	totpl <- c(21,57,47,25,25,33,88,94,97,26,85,80,122,175,160,10,6,189)
-	
-	
+		
 	#set up dataframe
-	dataf <- data.frame(sizes=c(),sizeNext=c(),surv=c(),flower=c(),fec=c(),nSeedlings=c(),cg.year=c(),m.year=c(),b.year=c())
+	dataf <-matrix(NA,maxPop,11)
+	n.per.yr  <-  rep(NA,nYrs)
+	
+	count <- 0
+
+	#stoch sims
+	tmp <- rmvnorm(nYrs,mean=meanYear,sigma=matVarYear)
 	
 	for (t in 1:nYrs) {
 		
 		#yr effects
 		nSeedlings <- sample(nrec,size=1,replace=FALSE)
-		#stoch sims
-		tmp <- rmvnorm(1,mean=meanYear,sigma=matVarYear)
 		#print(tmp)
+		n.per.yr[t] <- length(sizes)
 		
-		m.year <- tmp[1]
-		cg.year <- tmp[2]
-		b.year <- tmp[3]
-		ns <- length(sizes)
+		m.year <- tmp[t,1]
+		cg.year <- tmp[t,2]
+		b.year <- tmp[t,3]
 		
-		if (ns>0) { 
+		if (n.per.yr[t]>0) { 
 			#survival
-			sx <- 1*(logit(m0+ms*sizes+m.year)>runif(ns))
+			sx <- 1*(logit(m0+ms*sizes+m.year)>runif(n.per.yr[t]))
 			#flowering
-			fx <- 1*(logit(b0+bs*sizes)>runif(ns))
+			fx <- 1*(logit(b0+bs*sizes)>runif(n.per.yr[t]))
 			#fertility
 			seedsx <- exp(A+B*sizes)*fx*sx
-			seedsx[seedsx>0] <- rpois(sum(seedsx>0),seedsx[seedsx>0])
+			#seedsx[seedsx>0] <- rpois(sum(seedsx>0),seedsx[seedsx>0])
 		} else {
 			sx <- fx <- seedsx <- c()
 			print(c("extinct in year ", t))
 		}
 		
-		pEst <- min(nSeedlings/max(sum(seedsx),1),1)
+		if (densDep) pEst <- min(nSeedlings/max(sum(seedsx),1),1) else pEst <- 1
 		
-		babies <- rnorm(ceiling(pEst*max(sum(seedsx),1)),mean.kids+b.year,sd.kids) #will end up with nrec babies at least 
-		if (length(babies)<nSeedlings) nSeedlings <- length(babies)
+		babies <- rnorm(ceiling(pEst*max(sum(seedsx,na.rm=TRUE),1)),
+				mean.kids+b.year,sd.kids) 
+		#if (count>0) print(c("yr",t-startYr,pEst*max(sum(seedsx,na.rm=TRUE),1),length(babies)))
+		#will end up with nrec babies at least in density dependent case
+		if (length(babies)<nSeedlings & densDep) nSeedlings <- length(babies)
 		
 		#growth
 		sizeNext <- rnorm(length(sizes),ag+bg*sizes+cg.year,sig)
@@ -632,26 +639,44 @@ simulateCarlina <- function(nSamp=2000,nYrs=1000,nSampleYrs=15,
 		sizeNext[sx==0 | fx==1] <- NA
 		
 		#storage
-		if (t>startYr) {
+		if (t > startYr) {
 			#print(t)
-			dataf <- rbind(dataf,
-					data.frame(size=sizes,sizeNext=sizeNext,
-							surv=1*sx,flower=1*fx,fec=seedsx,year=(rep(t,length(sizes))),
-							nSeedlings=rep(nSeedlings,length(sizes)),m.year=rep(m.year,length(sizes)),
-							cg.year=rep(cg.year,length(sizes)),b.year=rep(b.year,length(sizes)), offspringNext=rep(NA,length(sizes))))
-			#print(head(dataf))
-			dataf <- rbind(dataf,
-					data.frame(size=rep(NA,length(babies)),sizeNext=babies,surv=rep(NA,length(babies)),
-							flower=rep(NA,length(babies)),
-							fec=rep(NA,length(babies)),year=(rep(t,length(babies))),
-							nSeedlings=rep(nSeedlings,length(babies)),m.year=rep(m.year,length(babies)),
-							cg.year=rep(cg.year,length(babies)),b.year=rep(b.year,length(babies)), offspringNext=rep("sexual",length(babies))))
-		}
+			#don't 'do it at all if too big (so as not to do only adults, etc)
+			if ((count+length(sizes))>maxPop) { print("large pop size, breaking");break()}
+			if ((count+length(sizes)+length(babies))>maxPop) { print("large pop size, breaking");break()}
+			
+			chs <- (count+1):(count+length(sizes))
+			dataf[chs,1] <- sizes
+			dataf[chs,2] <- sizeNext
+			dataf[chs,3] <- 1*sx
+			dataf[chs,4] <- 1*fx
+			dataf[chs,5] <- seedsx
+			dataf[chs,6] <- t
+			dataf[chs,7] <- nSeedlings
+			dataf[chs,8] <- m.year
+			dataf[chs,9] <- cg.year
+			dataf[chs,10] <- b.year
+			
+			count <- count + length(sizes)
+			chs <- (count+1):(count+length(babies))
+			dataf[chs,2] <- babies
+			dataf[chs,6] <- t
+			dataf[chs,7] <- nSeedlings
+			dataf[chs,8] <- m.year
+			dataf[chs,9] <- cg.year
+			dataf[chs,10] <- b.year
+			dataf[chs,11] <- "sexual"
+			
+			count <- count + length(babies)
+			
+			} 
 		
+						
 		#new pop
 		#print(cbind(sizes,sx,fx))
-		sizes <- c(sizes[sx==1 & fx==0 & !is.na(fx)],babies)
+		sizes <- c(sizeNext[sx==1 & fx==0 & !is.na(fx)],babies)
 		if (length(sizes)==0) print("extinct")
+			
 		
 	}
 	
@@ -665,9 +690,35 @@ simulateCarlina <- function(nSamp=2000,nYrs=1000,nSampleYrs=15,
 			matVarYear=matVarYear,
 			nrec=nrec)
 	
+	dataf <- dataf[1:count,]
+	
+	dataf <- data.frame(dataf,stringsAsFactors = FALSE)	
+	#print(table(dataf[,6]))
+	
+	trueGrow <- mean(log((n.per.yr[(startYr+1):length(n.per.yr)]/n.per.yr[(startYr):(length(n.per.yr)-1)])),na.rm=TRUE)  
+	st<-rep(NA,length(n.per.yr));for (j in 1:length(n.per.yr)) st[j] <- mean(log((n.per.yr[2:j]/n.per.yr[1:(j-1)])),na.rm=TRUE)
+	plot(st); abline(h=trueGrow)
+
+
+	colnames(dataf) <- c("size","sizeNext","surv","flower","fec",
+			"year","nSeedlings","m.year","cg.year","b.year","offspringNext")
+	
+	dataf$size <- as.numeric(dataf$size)
+	dataf$sizeNext <- as.numeric(dataf$sizeNext)
+	dataf$surv <- as.numeric(dataf$surv)
+	dataf$flower <- as.numeric(dataf$flower)
+	dataf$fec <- as.numeric(dataf$fec)
+	dataf$nSeedlings <- as.numeric(dataf$nSeedlings)
+	dataf$year <- as.numeric(dataf$year)
+	dataf$cg.year <- as.numeric(dataf$cg.year)
+	dataf$m.year <- as.numeric(dataf$m.year)
+	dataf$b.year <- as.numeric(dataf$b.year)	
+	
+	#print(table(dataf$year))
+	
 	dataf$fec[dataf$fec==0] <- NA
 	
-	return(list(dataf=dataf,meanYear=meanYear,matVarYear=matVarYear,list.par=list.par))
+	return(list(dataf=dataf,meanYear=meanYear,matVarYear=matVarYear,list.par=list.par,trueGrow=trueGrow))
 	
 }
 
@@ -675,12 +726,16 @@ simulateCarlina <- function(nSamp=2000,nYrs=1000,nSampleYrs=15,
 #Find years where can estimate all three stochastic vital rates(survival, growth and baby size)
 .identifyPossibleYearsCarlina <- function(dataf){
 	
-	yr1 <- table(dataf$year[!is.na(dataf$size) & !is.na(dataf$sizeNext) & is.na(dataf$offspringNext)])
-	yr2 <- table(dataf$year[!is.na(dataf$size) & !is.na(dataf$surv) & is.na(dataf$offspringNext)])
-	yr3 <- table(dataf$year[!is.na(dataf$sizeNext) & !is.na(dataf$offspringNext)])
+	yr1 <- table(dataf$year[!is.na(dataf$size) & 
+							!is.na(dataf$sizeNext) & is.na(dataf$offspringNext)])
+	yr2 <- table(dataf$year[!is.na(dataf$size) & 
+							!is.na(dataf$surv) & is.na(dataf$offspringNext)])
+	yr3 <- table(dataf$year[!is.na(dataf$sizeNext) & 
+							!is.na(dataf$offspringNext)])
 	
-	good.yrs <- intersect(as.numeric(as.character(names(yr1)[yr1>2])),as.numeric(as.character(names(yr2))[yr2>2]))
-	good.yrs <- intersect(good.yrs,as.numeric(as.character(names(yr3)[yr3>2])))
+	good.yrs <- intersect(as.numeric(as.character(names(yr1)[yr1>1])),
+			as.numeric(as.character(names(yr2))[yr2>1]))
+	good.yrs <- intersect(good.yrs,as.numeric(as.character(names(yr3)[yr3>1])))
 	
 	return(is.element(dataf$year,good.yrs))
 }
@@ -1176,25 +1231,37 @@ getListRegObjectsFec <- function(Obj,nsamp=1000) {
 
 
 ## Function to coerce Growth object to parameters and variance desired
-coerceGrowthObj <- function(growthObj,coeff,sd){
+coerceGrowthObj <- function(growthObj, coeff, sd){
 
-	if (length(growthObj@fit$coefficients) !=length(coeff)) print("warning: number of desired coefficients to not match number of growth object coefficients")
-	growthObj@fit$coefficients <- coeff
-	
-	growthObj@sd <- sd
-	
+	if (length(growthObj@fit$coefficients) !=length(coeff)) {
+		print("warning: number of desired coefficients to not match number of growth object coefficients")
+	} 	
+	growthObj@fit$coefficients[] <- as.numeric(coeff)
+	growthObj@sd[] <- as.numeric(sd)
 	return(growthObj)
 }
 
 
 ## Function to coerce Survival object to parameters desired
-coerceSurvObj <- function(survObj,coeff){
+coerceSurvObj <- function(survObj, coeff){
 	
 	if (length(survObj@fit$coefficients) !=length(coeff)) print("warning: number of desired coefficients to not match number of growth object coefficients")
-	survObj@fit$coefficients <- coeff
+	survObj@fit$coefficients[] <- as.numeric(coeff)
 	
 	return(survObj)
 }
 
 
+# Function to graph smoothed contour plots on the kernels, sensitivities and elasticities compare model fits for growth and survival objects built with different linear combinations of covariates. 
+#
+#
+# Returns - a graph with the label for values of changes in stage condition on survival and per-capital sexual/clonal contributions.
+#
+
+contourPlot <- function(M, meshpts, upper, lower, color) {
+	filled.contour(meshpts, meshpts, t(M), zlim = c(upper, lower),
+			xlab = "Stage at time t", ylab = "Stage at time t+1", color.palette = color, nlevels = 20, cex.lab=1.5);
+	return(0);
+
+}
 
